@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 import { User, UserRole } from './types';
 
 interface AuthContextType {
@@ -15,16 +15,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('eduwatch_user');
-    if (stored) {
-      setUser(JSON.parse(stored));
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window === 'undefined') {
+      return null;
     }
-  }, []);
+
+    const stored = localStorage.getItem('eduwatch_user');
+    if (!stored) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(stored) as User;
+    } catch {
+      localStorage.removeItem('eduwatch_user');
+      return null;
+    }
+  });
 
   const login = async (email: string, password: string) => {
+    void password;
     // Mock login - in production this would call an API
     const mockUser: User = {
       id: '1',
@@ -38,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (email: string, password: string, name: string, role: UserRole) => {
+    void password;
     const mockUser: User = {
       id: Date.now().toString(),
       email,

@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { ConfidenceScore } from '@/components/confidence-score';
 import { useAuth } from '@/lib/auth';
 import { mockComplaints } from '@/lib/mock-data';
-import { ArrowLeft, MapPin, Calendar, Eye, Users } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -32,7 +32,7 @@ export default function ReportDetailsPage({ params }: { params: { id: string } }
           <Card>
             <CardContent className="py-12 text-center">
               <h2 className="text-xl font-semibold text-slate-900 mb-2">Complaint Not Found</h2>
-              <p className="text-slate-600 mb-4">The complaint you're looking for doesn't exist.</p>
+              <p className="text-slate-600 mb-4">The complaint you&apos;re looking for doesn&apos;t exist.</p>
               <Link href="/dashboard/reports">
                 <Button>Back to Reports</Button>
               </Link>

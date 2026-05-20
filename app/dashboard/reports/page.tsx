@@ -12,7 +12,7 @@ import { Search } from 'lucide-react';
 
 export default function ReportsPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
