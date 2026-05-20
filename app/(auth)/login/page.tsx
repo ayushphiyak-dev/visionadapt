@@ -76,11 +76,11 @@ export default function LoginPage() {
               {loading ? 'Signing In...' : 'Sign In'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <p className="text-sm text-center text-slate-600">
-              Don't have an account?{' '}
-              <Link href="/signup" className="text-indigo-600 hover:text-indigo-700 font-medium">
-                Sign up
-              </Link>
+              <p className="text-sm text-center text-slate-600">
+                Don&apos;t have an account?{' '}
+                <Link href="/signup" className="text-indigo-600 hover:text-indigo-700 font-medium">
+                  Sign up
+                </Link>
             </p>
           </CardFooter>
         </form>

@@ -12,14 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
-import { Bell, User, LogOut, Settings, LayoutDashboard, Menu } from 'lucide-react';
+import { Bell, User, LogOut, Settings, LayoutDashboard } from 'lucide-react';
 import { APP_NAME } from '@/lib/constants';
-import { useState } from 'react';
 
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const pathname = usePathname();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const isPublicPage = !pathname.startsWith('/dashboard') && 
                        !pathname.startsWith('/institute') && 

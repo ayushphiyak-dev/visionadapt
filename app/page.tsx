@@ -1,23 +1,15 @@
-'use client';
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, Shield, CheckCircle, TrendingUp, Users, FileText, Award } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowRight, Shield, CheckCircle, FileText } from 'lucide-react';
 
 export default function HomePage() {
   return (
     <div className="flex flex-col">
       <section className="relative bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 text-white py-20 px-4">
         <div className="mx-auto max-w-7xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center"
-          >
+          <div className="text-center">
             <Badge className="mb-6 bg-white/20 text-white border-white/30">
               Trusted by 500+ Educational Institutions
             </Badge>
@@ -39,7 +31,7 @@ export default function HomePage() {
                 </Button>
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 

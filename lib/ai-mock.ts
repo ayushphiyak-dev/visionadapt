@@ -8,7 +8,7 @@ export function analyzeComplaint(
   // Mock AI analysis
   const keywords = extractKeywords(title + ' ' + description);
   const sentiment = analyzeSentiment(description);
-  const urgency = determineUrgency(title, description, keywords);
+  const urgency = determineUrgency(title, description);
   const confidence = Math.floor(Math.random() * 15) + 85; // 85-100
 
   return {
@@ -51,7 +51,7 @@ function analyzeSentiment(text: string): 'negative' | 'neutral' | 'positive' {
   return 'neutral';
 }
 
-function determineUrgency(title: string, description: string, keywords: string[]): UrgencyLevel {
+function determineUrgency(title: string, description: string): UrgencyLevel {
   const text = (title + ' ' + description).toLowerCase();
   
   const criticalKeywords = ['dangerous', 'unsafe', 'emergency', 'urgent', 'critical', 'immediate', 'serious injury'];
