@@ -1,0 +1,36 @@
+{
+  "labels": [
+    "Typical color vision",
+    "Protanomaly",
+    "Protanopia",
+    "Deuteranomaly",
+    "Deuteranopia",
+    "Tritanomaly",
+    "Tritanopia"
+  ],
+  "axis_labels": [
+    "Typical color vision",
+    "Red-green deficiency",
+    "Blue-yellow deficiency"
+  ],
+  "plate_keys": [
+    "plateA",
+    "plateB",
+    "plateC",
+    "plateD",
+    "plateE",
+    "plateF",
+    "plateG",
+    "plateH"
+  ],
+  "confuse_options": [
+    "Red / green",
+    "Blue / purple",
+    "Green / brown",
+    "I'm not sure"
+  ],
+  "n_train": 6000,
+  "n_val": 1200,
+  "n_test": 1200,
+  "feature_dim": 12
+}

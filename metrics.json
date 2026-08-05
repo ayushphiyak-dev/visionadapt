@@ -1,0 +1,67 @@
+{
+  "axis_classifier": {
+    "accuracy": 0.8383,
+    "macro_precision": 0.7999,
+    "macro_recall": 0.7823,
+    "macro_f1": 0.7904,
+    "per_class": [
+      {
+        "label": "Typical color vision",
+        "precision": 0.6848,
+        "recall": 0.6243,
+        "f1": 0.6532,
+        "support": 181
+      },
+      {
+        "label": "Red-green deficiency",
+        "precision": 0.8743,
+        "recall": 0.9144,
+        "f1": 0.8939,
+        "support": 654
+      },
+      {
+        "label": "Blue-yellow deficiency",
+        "precision": 0.8405,
+        "recall": 0.8082,
+        "f1": 0.824,
+        "support": 365
+      }
+    ],
+    "confusion_matrix": [
+      [
+        113,
+        43,
+        25
+      ],
+      [
+        25,
+        598,
+        31
+      ],
+      [
+        27,
+        43,
+        295
+      ]
+    ],
+    "train_time_sec": 1.28,
+    "n_iterations": 80
+  },
+  "severity_regressor": {
+    "mae": 16.705,
+    "rmse": 20.912,
+    "train_time_sec": 3.59,
+    "n_iterations": 262
+  },
+  "inference": {
+    "cpu_single_sample_ms": 0.2016,
+    "measured_reps": 500,
+    "note": "Reference CPU timing from the training environment. The deployed app measures and displays real in-browser inference latency (TensorFlow.js, WebGL/WASM backend) at runtime \u2014 see the Model Insights panel."
+  },
+  "dataset": {
+    "n_train": 6000,
+    "n_val": 1200,
+    "n_test": 1200,
+    "source": "synthetic, generated from documented CVD confusion-axis mechanics (see generate_dataset.py docstring). No real patient data used."
+  }
+}
