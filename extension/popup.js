@@ -16,14 +16,13 @@
 
   async function loadState() {
     var results = await Promise.all([
-      storage.get({ enabled: false, overlays: true, profile: { type: "Not assessed", severity: 0, contrast: 50 } }),
+      storage.get({ enabled: false, profile: { type: "Not assessed", severity: 0, contrast: 50 } }),
       tabMsg({ type: "STATUS" }),
     ]);
     var data = results[0];
     var status = results[1];
 
     togEl($("tOn"), data.enabled);
-    togEl($("tOv"), data.overlays);
     $("pType").textContent = data.profile.type;
     $("pSev").textContent = data.profile.severity > 0 ? data.profile.severity + "%" : "--";
     $("pCon").textContent = (data.profile.contrast || 50) + "%";
@@ -56,6 +55,11 @@
     } else {
       $("mRow").style.display = "none";
     }
+
+    if (data.profile && data.profile.type && data.profile.type !== "Not assessed") {
+      $("syncMsg").className = "sync-msg ok";
+      $("syncMsg").textContent = "Synced: " + data.profile.type;
+    }
   }
 
   function updateStatus(on) {
@@ -80,16 +84,7 @@
     else { $("gBanner").classList.remove("show"); $("cInfo").classList.remove("show"); $("mRow").style.display = "none"; }
   });
 
-  $("tOv").addEventListener("click", async function () {
-    var d = await storage.get("overlays");
-    var next = !d.overlays;
-    await storage.set({ overlays: next });
-    togEl(this, next);
-    var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: "TOGGLE_OVERLAYS", overlays: next });
-  });
-
-  $("bSync").addEventListener("click", async function () {
+  function doSync() {
     var email = $("syncEmail").value.trim();
     var pass = $("syncPass").value;
     var msg = $("syncMsg");
@@ -100,55 +95,56 @@
       return;
     }
 
-    this.textContent = "Syncing...";
-    this.disabled = true;
+    $("bSync").textContent = "Syncing...";
+    $("bSync").disabled = true;
     msg.className = "sync-msg info";
     msg.textContent = "Connecting to server...";
 
-    var result = await new Promise(function(resolve) {
-      chrome.runtime.sendMessage({ type: "SYNC_REGISTER", email: email, password: pass }, resolve);
+    chrome.runtime.sendMessage({ type: "SYNC_REGISTER", email: email, password: pass }, function (result) {
+      $("bSync").textContent = "Sync Profile";
+      $("bSync").disabled = false;
+
+      if (result && result.ok && result.profile) {
+        msg.className = "sync-msg ok";
+        msg.textContent = "Synced: " + result.profile.type + " (" + result.profile.severity + "% severity)";
+        $("pType").textContent = result.profile.type;
+        $("pSev").textContent = result.profile.severity + "%";
+        $("pCon").textContent = (result.profile.contrast || 50) + "%";
+        storage.set({ enabled: true }, function () {
+          togEl($("tOn"), true);
+          updateStatus(true);
+        });
+      } else {
+        msg.className = "sync-msg err";
+        msg.textContent = result ? (result.error || "Sync failed") : "No response from background";
+      }
     });
+  }
 
-    if (result && result.ok && result.profile) {
-      msg.className = "sync-msg ok";
-      msg.textContent = "Synced: " + result.profile.type + " (" + result.profile.severity + "% severity)";
-      $("pType").textContent = result.profile.type;
-      $("pSev").textContent = result.profile.severity + "%";
-      $("pCon").textContent = (result.profile.contrast || 50) + "%";
-      await storage.set({ enabled: true });
-      togEl($("tOn"), true);
-      updateStatus(true);
-    } else {
-      msg.className = "sync-msg err";
-      msg.textContent = result ? result.error : "Sync failed";
-    }
+  $("bSync").addEventListener("click", doSync);
+  $("syncPass").addEventListener("keydown", function (e) { if (e.key === "Enter") doSync(); });
+  $("syncEmail").addEventListener("keydown", function (e) { if (e.key === "Enter") $("syncPass").focus(); });
 
-    this.textContent = "Sync Profile";
-    this.disabled = false;
-  });
-
-  $("bDiag").addEventListener("click", async function () {
-    this.textContent = "Running...";
-    this.disabled = true;
+  $("bDiag").addEventListener("click", function () {
+    var self = this;
+    self.textContent = "Running...";
+    self.disabled = true;
     $("diagBox").style.display = "block";
 
-    var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    var results = await new Promise(function(resolve) {
-      chrome.runtime.sendMessage({ type: "DIAGNOSTICS", tabId: tabs[0] ? tabs[0].id : null }, resolve);
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      chrome.runtime.sendMessage({ type: "DIAGNOSTICS", tabId: tabs[0] ? tabs[0].id : null }, function (results) {
+        $("dBk").innerHTML = results && results.backend && results.backend.ok ? '<span class="d-ok">OK</span>' : '<span class="d-fail">FAIL</span>';
+        $("dBkLat").textContent = results && results.backend && results.backend.latencyMs != null ? results.backend.latencyMs + "ms" : "--";
+        $("dEx").innerHTML = results && results.extension && results.extension.ok ? '<span class="d-ok">OK</span>' : results && results.extension ? '<span class="d-fail">FAIL</span>' : '<span style="color:#52525b">N/A</span>';
+        $("dExLat").textContent = results && results.extension && results.extension.latencyMs != null ? results.extension.latencyMs + "ms" : "--";
+        self.textContent = "Re-run Diagnostic";
+        self.disabled = false;
+      });
     });
-
-    $("dBk").innerHTML = results && results.backend && results.backend.ok ? '<span class="d-ok">OK</span>' : '<span class="d-fail">FAIL</span>';
-    $("dBkLat").textContent = results && results.backend && results.backend.latencyMs != null ? results.backend.latencyMs + "ms" : "--";
-    $("dEx").innerHTML = results && results.extension && results.extension.ok ? '<span class="d-ok">OK</span>' : results && results.extension ? '<span class="d-fail">FAIL</span>' : '<span style="color:#52525b">N/A</span>';
-    $("dExLat").textContent = results && results.extension && results.extension.latencyMs != null ? results.extension.latencyMs + "ms" : "--";
-
-    this.textContent = "Re-run Diagnostic";
-    this.disabled = false;
   });
 
-  $("bAssess").addEventListener("click", function() { chrome.tabs.create({ url: "https://visionadapt.vercel.app/#assessment" }); window.close(); });
-  $("bDash").addEventListener("click", function() { chrome.tabs.create({ url: "https://visionadapt.vercel.app/#dashboard" }); window.close(); });
-  $("lSite").addEventListener("click", function(e) { e.preventDefault(); chrome.tabs.create({ url: "https://visionadapt.vercel.app/" }); window.close(); });
+  $("bAssess").addEventListener("click", function () { chrome.tabs.create({ url: "https://visionadapt.vercel.app/#assessment" }); window.close(); });
+  $("lSite").addEventListener("click", function (e) { e.preventDefault(); chrome.tabs.create({ url: "https://visionadapt.vercel.app/" }); window.close(); });
 
   loadState();
 })();
