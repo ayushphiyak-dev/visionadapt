@@ -141,6 +141,15 @@ def predict_local(feature_vector: list[float]) -> dict:
 
 
 def classify_image(image_url: str, model_id: str = "google/vit-base-patch16-224") -> dict:
+    if not HF_API_KEY:
+        return {
+            "status": "error",
+            "predictions": {},
+            "source": "none",
+            "model_used": "none",
+            "error": "Image classification requires HF_API_KEY. Use the /predict/cvd endpoint for the local assessment model instead.",
+        }
+
     hf_result = query_huggingface(image_url, model_id)
     if "error" not in hf_result:
         return {

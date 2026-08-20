@@ -708,10 +708,6 @@ async function apiFetch(path, options = {}) {
   if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
   try {
     const resp = await fetch(API_BASE + path, { ...options, headers });
-    if (resp.status === 401) {
-      if (path.includes('/auth/')) { authToken = null; localStorage.removeItem('va-token'); }
-      return { _error: true, _status: 401, detail: 'Unauthorized' };
-    }
     const data = await resp.json().catch(() => ({}));
     return { _error: !resp.ok, _status: resp.status, ...data };
   } catch (e) { return { _error: true, _status: 0, detail: e.message }; }
@@ -771,11 +767,6 @@ async function apiLoadProfile() {
     state.profile.modelConfidence = res.profile.model_confidence;
     state.profile.modelLatencyMs = res.profile.model_latency_ms;
     return true;
-  }
-  if (res._status === 401) {
-    authToken = null;
-    authUser = null;
-    localStorage.removeItem('va-token');
   }
   return false;
 }
@@ -1960,7 +1951,11 @@ document.getElementById('loginFormEl').addEventListener('submit', async (e)=>{
   errEl.style.display='none';
   const ok = await apiLogin(email, pw);
   btn.textContent='Sign in'; btn.disabled=false;
-  if(ok){ closeAuthModal(); persistState(); await apiLoadProfile(); updateAuthUI(); toast('Signed in', `Welcome back, ${authUser?.display_name||email}!`, 'success'); persistState(); }
+  if(ok){
+    closeAuthModal(); persistState(); updateAuthUI();
+    toast('Signed in', `Welcome back, ${authUser?.display_name||email}!`, 'success');
+    apiLoadProfile().then(()=>persistState());
+  }
   else{ errEl.textContent='Incorrect email or password. Please try again.'; errEl.style.display='block'; }
 });
 
@@ -1983,14 +1978,44 @@ document.getElementById('registerFormEl').addEventListener('submit', async (e)=>
 function updateAuthUI(){
   const navCta = document.querySelector('.nav-cta');
   const existing = document.getElementById('authNavBtn');
+  const existingDropdown = document.getElementById('authDropdown');
   if(existing) existing.remove();
+  if(existingDropdown) existingDropdown.remove();
   const mobileBtn = document.getElementById('mobileMenuBtn');
   if(authToken){
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative';
+    wrap.id = 'authNavWrap';
     const btn = document.createElement('button');
     btn.className='btn btn-secondary btn-sm'; btn.id='authNavBtn';
     btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg> ${authUser?.display_name||'Account'}`;
-    btn.addEventListener('click', ()=>{ authToken=null; localStorage.removeItem('va-token'); authUser=null; updateAuthUI(); toast('Signed out','You have been signed out.','info'); persistState(); });
-    navCta.insertBefore(btn, mobileBtn);
+    const dropdown = document.createElement('div');
+    dropdown.id = 'authDropdown';
+    dropdown.style.cssText = 'display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-md);min-width:200px;z-index:200;overflow:hidden';
+    dropdown.innerHTML = `<div style="padding:12px 16px;border-bottom:1px solid var(--hairline)"><div style="font-size:13px;font-weight:700">${authUser?.display_name||'User'}</div><div style="font-size:11.5px;color:var(--text-2);margin-top:2px">${authUser?.email||''}</div></div>
+      <a href="#" id="authDropdownProfile" style="display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:13.5px;color:var(--text);transition:background .15s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Profile</a>
+      <a href="#" id="authDropdownSettings" style="display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:13.5px;color:var(--text);transition:background .15s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1"/></svg>Settings</a>
+      <a href="#" id="authDropdownSignOut" style="display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:13.5px;color:var(--danger);transition:background .15s;border-top:1px solid var(--hairline)" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</a>`;
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    });
+    document.addEventListener('click', ()=>{ dropdown.style.display = 'none'; });
+    wrap.appendChild(btn);
+    wrap.appendChild(dropdown);
+    navCta.insertBefore(wrap, mobileBtn);
+    setTimeout(()=>{
+      const so = document.getElementById('authDropdownSignOut');
+      if(so) so.addEventListener('click', (e)=>{
+        e.preventDefault();
+        authToken=null; localStorage.removeItem('va-token'); authUser=null;
+        updateAuthUI(); toast('Signed out','You have been signed out.','info'); persistState();
+      });
+      const pf = document.getElementById('authDropdownProfile');
+      if(pf) pf.addEventListener('click', (e)=>{ e.preventDefault(); navigate('profile'); });
+      const st = document.getElementById('authDropdownSettings');
+      if(st) st.addEventListener('click', (e)=>{ e.preventDefault(); navigate('settings'); });
+    }, 0);
   } else {
     const btn = document.createElement('button');
     btn.className='btn btn-primary btn-sm'; btn.id='authNavBtn'; btn.textContent='Sign in';
