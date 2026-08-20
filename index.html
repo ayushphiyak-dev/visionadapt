@@ -681,6 +681,7 @@ lucide.createIcons();
 const API_BASE = 'https://visionadapt.vercel.app';
 let authToken = localStorage.getItem('va-token') || null;
 let authUser = null;
+try { const s = localStorage.getItem('va-user'); if(s) authUser = JSON.parse(s); } catch(e){}
 let backendStatus = { reachable: false, latencyMs: null, modelLoaded: false, lastCheck: 0 };
 
 const state = {
@@ -715,14 +716,19 @@ async function apiFetch(path, options = {}) {
 
 async function apiLogin(email, password) {
   const res = await apiFetch('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
-  if (!res._error && res.access_token) { authToken = res.access_token; localStorage.setItem('va-token', authToken); authUser = res.user; return true; }
+  if (!res._error && res.access_token) { authToken = res.access_token; localStorage.setItem('va-token', authToken); authUser = res.user; localStorage.setItem('va-user', JSON.stringify(authUser)); return true; }
   return false;
 }
 
 async function apiRegister(email, password, displayName) {
   const res = await apiFetch('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ email, password, display_name: displayName }) });
-  if (!res._error && res.access_token) { authToken = res.access_token; localStorage.setItem('va-token', authToken); authUser = res.user; return true; }
+  if (!res._error && res.access_token) { authToken = res.access_token; localStorage.setItem('va-token', authToken); authUser = res.user; localStorage.setItem('va-user', JSON.stringify(authUser)); return true; }
   return false;
+}
+
+function clearAuth() {
+  authToken = null; authUser = null;
+  localStorage.removeItem('va-token'); localStorage.removeItem('va-user');
 }
 
 async function apiSaveProfile() {
@@ -841,7 +847,16 @@ async function boot(){
   navigate(startPage);
   loader.classList.add('hidden');
   apiRunDiagnostics();
-  if(authToken) { await apiLoadProfile(); persistState(); }
+  if(authToken) {
+    const me = await apiFetch('/api/v1/auth/me');
+    if(me._error) {
+      clearAuth();
+    } else {
+      authUser = me;
+      localStorage.setItem('va-user', JSON.stringify(authUser));
+      apiLoadProfile().then(()=>persistState());
+    }
+  }
   updateAuthUI();
 }
 
@@ -1977,10 +1992,8 @@ document.getElementById('registerFormEl').addEventListener('submit', async (e)=>
 
 function updateAuthUI(){
   const navCta = document.querySelector('.nav-cta');
-  const existing = document.getElementById('authNavBtn');
-  const existingDropdown = document.getElementById('authDropdown');
+  const existing = document.getElementById('authNavWrap');
   if(existing) existing.remove();
-  if(existingDropdown) existingDropdown.remove();
   const mobileBtn = document.getElementById('mobileMenuBtn');
   if(authToken){
     const wrap = document.createElement('div');
@@ -1998,24 +2011,20 @@ function updateAuthUI(){
       <a href="#" id="authDropdownSignOut" style="display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:13.5px;color:var(--danger);transition:background .15s;border-top:1px solid var(--hairline)" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</a>`;
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
-      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+      const isOpen = dropdown.style.display === 'block';
+      document.querySelectorAll('#authDropdown').forEach(d=>d.style.display='none');
+      if(!isOpen) dropdown.style.display = 'block';
     });
-    document.addEventListener('click', ()=>{ dropdown.style.display = 'none'; });
     wrap.appendChild(btn);
     wrap.appendChild(dropdown);
     navCta.insertBefore(wrap, mobileBtn);
-    setTimeout(()=>{
-      const so = document.getElementById('authDropdownSignOut');
-      if(so) so.addEventListener('click', (e)=>{
-        e.preventDefault();
-        authToken=null; localStorage.removeItem('va-token'); authUser=null;
-        updateAuthUI(); toast('Signed out','You have been signed out.','info'); persistState();
-      });
-      const pf = document.getElementById('authDropdownProfile');
-      if(pf) pf.addEventListener('click', (e)=>{ e.preventDefault(); navigate('profile'); });
-      const st = document.getElementById('authDropdownSettings');
-      if(st) st.addEventListener('click', (e)=>{ e.preventDefault(); navigate('settings'); });
-    }, 0);
+    document.getElementById('authDropdownSignOut')?.addEventListener('click', (e)=>{
+      e.preventDefault();
+      clearAuth();
+      updateAuthUI(); toast('Signed out','You have been signed out.','info'); persistState();
+    });
+    document.getElementById('authDropdownProfile')?.addEventListener('click', (e)=>{ e.preventDefault(); navigate('profile'); });
+    document.getElementById('authDropdownSettings')?.addEventListener('click', (e)=>{ e.preventDefault(); navigate('settings'); });
   } else {
     const btn = document.createElement('button');
     btn.className='btn btn-primary btn-sm'; btn.id='authNavBtn'; btn.textContent='Sign in';
@@ -2028,6 +2037,10 @@ function updateAuthUI(){
 (async function initApp() {
   await boot();
 })();
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#authNavWrap')) document.querySelectorAll('#authDropdown').forEach(d=>d.style.display='none');
+});
 </script>
 </body>
 </html>
