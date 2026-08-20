@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from auth import (
     create_access_token, get_current_user, register_user, authenticate_user,
-    get_user_public, save_user_profile, get_user_profile,
+    get_user_public, save_user_profile, get_user_profile, _ensure_admin,
 )
 from models import (
     RegisterRequest, LoginRequest, PredictionRequest, PredictionResponse,
@@ -50,6 +50,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup():
+    _ensure_admin()
 
 
 @app.exception_handler(Exception)
