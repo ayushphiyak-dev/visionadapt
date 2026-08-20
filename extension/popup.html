@@ -2,189 +2,118 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=340">
+  <meta name="viewport" content="width=360">
   <title>VisionAdapt</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      width: 340px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-      background: #F8F9FB;
-      color: #1D1D1F;
-      font-size: 14px;
-    }
-
-    .header {
-      display: flex; align-items: center; gap: 10px;
-      padding: 16px; border-bottom: 1px solid #E4E7EC;
-    }
-    .header .logo {
-      width: 28px; height: 28px; border-radius: 8px;
-      background: linear-gradient(135deg, #007AFF, #14B8A6);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .header .logo svg { width: 16px; height: 16px; stroke: #fff; fill: none; }
-    .header .title { font-weight: 700; font-size: 15px; }
-    .header .version { font-size: 11px; color: #6E6E73; margin-left: auto; }
-
-    .status-bar {
-      display: flex; align-items: center; gap: 10px;
-      padding: 12px 16px; border-bottom: 1px solid #E4E7EC;
-    }
-    .pulse { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .pulse.active { background: #34C759; box-shadow: 0 0 0 3px rgba(52,199,89,.2); animation: pulseGlow 1.5s ease infinite; }
-    .pulse.inactive { background: #E4E7EC; }
-    @keyframes pulseGlow {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(52,199,89,.2); }
-      50% { box-shadow: 0 0 0 6px rgba(52,199,89,.1); }
-    }
-    .status-text { font-weight: 600; font-size: 13px; }
-    .status-sub { font-size: 11px; color: #6E6E73; }
-
-    .game-banner {
-      display: none;
-      align-items: center; gap: 10px;
-      padding: 10px 16px;
-      background: linear-gradient(135deg, rgba(0,122,255,.08), rgba(20,184,166,.08));
-      border-bottom: 1px solid #E4E7EC;
-    }
-    .game-banner.show { display: flex; }
-    .game-banner .game-icon {
-      width: 32px; height: 32px; border-radius: 8px;
-      background: linear-gradient(135deg, #007AFF, #14B8A6);
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 14px; color: #fff; flex-shrink: 0;
-    }
-    .game-banner .game-name { font-weight: 600; font-size: 13px; }
-    .game-banner .game-genre { font-size: 11px; color: #6E6E73; }
-    .game-banner .game-badge {
-      margin-left: auto; font-size: 10px; font-weight: 700;
-      padding: 3px 8px; border-radius: 99px;
-      background: rgba(52,199,89,.12); color: #34C759;
-    }
-
-    .section { padding: 14px 16px; }
-    .section-title {
-      font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-      color: #6E6E73; font-weight: 600; margin-bottom: 10px;
-    }
-
-    .toggle-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 0;
-    }
-    .toggle-row .label { font-size: 13px; font-weight: 500; }
-
-    .toggle {
-      width: 42px; height: 26px; border-radius: 13px;
-      background: #E4E7EC; border: none; cursor: pointer;
-      position: relative; transition: background 0.2s;
-    }
-    .toggle::after {
-      content: ""; position: absolute; top: 3px; left: 3px;
-      width: 20px; height: 20px; border-radius: 50%;
-      background: #fff; transition: left 0.2s;
-      box-shadow: 0 1px 3px rgba(0,0,0,.2);
-    }
-    .toggle.on { background: #007AFF; }
-    .toggle.on::after { left: 19px; }
-
-    .profile-card {
-      background: #fff; border: 1px solid #E4E7EC; border-radius: 10px;
-      padding: 12px; margin-top: 8px;
-    }
-    .profile-row { display: flex; justify-content: space-between; padding: 4px 0; }
-    .profile-row .key { font-size: 12px; color: #6E6E73; }
-    .profile-row .val { font-size: 12px; font-weight: 600; }
-
-    .canvas-info {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 12px; margin-top: 8px;
-      background: rgba(0,122,255,.06); border-radius: 8px;
-      font-size: 12px; color: #007AFF; font-weight: 500;
-    }
-
-    .btn {
-      display: block; width: 100%; padding: 10px;
-      border-radius: 10px; border: none; font-weight: 600;
-      font-size: 13px; cursor: pointer; text-align: center;
-      transition: opacity 0.15s;
-    }
-    .btn:active { opacity: 0.8; }
-    .btn-primary { background: #007AFF; color: #fff; }
-    .btn-secondary { background: #F1F3F7; color: #1D1D1F; }
-
-    .footer {
-      padding: 12px 16px; border-top: 1px solid #E4E7EC;
-      font-size: 11px; color: #6E6E73; text-align: center;
-    }
-    .footer a { color: #007AFF; text-decoration: none; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{width:360px;font-family:"Inter",-apple-system,system-ui,sans-serif;background:#000;color:#fafafa;font-size:13px;line-height:1.5}
+    .hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #27272a}
+    .hdr .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#3b82f6,#14b8a6);display:flex;align-items:center;justify-content:center}
+    .hdr .mark svg{width:14px;height:14px;stroke:#fff;fill:none}
+    .hdr .name{font-weight:700;font-size:14px;letter-spacing:-.01em}
+    .hdr .ver{font-size:11px;color:#52525b;margin-left:auto}
+    .status{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #27272a}
+    .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .2s}
+    .dot.on{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.4)}
+    .dot.off{background:#52525b}
+    .st-t{font-weight:600;font-size:12.5px}
+    .st-s{font-size:11px;color:#71717a}
+    .game{display:none;align-items:center;gap:10px;padding:10px 16px;background:rgba(59,130,246,.06);border-bottom:1px solid #27272a}
+    .game.show{display:flex}
+    .game .g-ic{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#3b82f6,#14b8a6);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff;flex-shrink:0}
+    .game .g-name{font-weight:600;font-size:12.5px}
+    .game .g-genre{font-size:11px;color:#71717a}
+    .game .g-live{margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(34,197,94,.12);color:#22c55e}
+    .sec{padding:12px 16px}
+    .sec-t{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#52525b;font-weight:700;margin-bottom:8px}
+    .row{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+    .row .lbl{font-size:12.5px;font-weight:500}
+    .tog{width:40px;height:24px;border-radius:12px;background:#27272a;border:none;cursor:pointer;position:relative;transition:background .2s}
+    .tog::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+    .tog.on{background:#3b82f6}
+    .tog.on::after{left:18px}
+    .p-card{background:#0a0a0a;border:1px solid #27272a;border-radius:10px;padding:10px;margin-top:6px}
+    .p-row{display:flex;justify-content:space-between;padding:3px 0}
+    .p-row .k{font-size:11.5px;color:#71717a}
+    .p-row .v{font-size:11.5px;font-weight:600}
+    .canvas-info{display:none;align-items:center;gap:6px;padding:6px 10px;margin-top:6px;background:rgba(59,130,246,.06);border-radius:7px;font-size:11px;color:#3b82f6;font-weight:500}
+    .canvas-info.show{display:flex}
+    .canvas-info svg{width:12px;height:12px;flex-shrink:0}
+    .metrics-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px}
+    .metric{background:#0a0a0a;border:1px solid #27272a;border-radius:7px;padding:8px;text-align:center}
+    .metric .mv{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+    .metric .ml{font-size:9.5px;color:#52525b;text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-top:2px}
+    .metric.good .mv{color:#22c55e}
+    .metric.warn .mv{color:#f59e0b}
+    .btn{display:block;width:100%;padding:9px;border-radius:8px;border:none;font-weight:600;font-size:12.5px;cursor:pointer;text-align:center;transition:all .15s}
+    .btn:active{transform:scale(.98)}
+    .btn-p{background:#fff;color:#000}
+    .btn-p:hover{background:#e5e5e5}
+    .btn-s{background:#111;color:#fafafa;border:1px solid #27272a}
+    .btn-s:hover{border-color:#52525b}
+    .ftr{padding:10px 16px;border-top:1px solid #27272a;font-size:11px;color:#52525b;text-align:center}
+    .ftr a{color:#3b82f6;text-decoration:none}
+    .diag{margin-top:8px;padding:8px 10px;background:#0a0a0a;border:1px solid #27272a;border-radius:7px}
+    .diag .d-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0}
+    .diag .d-row .dk{color:#71717a}
+    .diag .d-ok{color:#22c55e;font-weight:600}
+    .diag .d-fail{color:#ef4444;font-weight:600}
+    .btn-diag{margin-top:6px;padding:6px 10px;border-radius:6px;border:1px solid #27272a;background:transparent;color:#71717a;font-size:11px;cursor:pointer;width:100%;font-weight:600;transition:.15s}
+    .btn-diag:hover{border-color:#3b82f6;color:#3b82f6}
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="logo">
-      <svg viewBox="0 0 24 24" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
-        <circle cx="12" cy="12" r="3"/>
-      </svg>
-    </div>
-    <span class="title">VisionAdapt</span>
-    <span class="version">v1.0.0</span>
+  <div class="hdr">
+    <div class="mark"><svg viewBox="0 0 24 24" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
+    <span class="name">VisionAdapt</span>
+    <span class="ver">v1.0.0</span>
   </div>
-
-  <div class="status-bar">
-    <div class="pulse inactive" id="statusPulse"></div>
-    <div>
-      <div class="status-text" id="statusText">Not connected</div>
-      <div class="status-sub" id="statusSub">Enable to start correcting</div>
-    </div>
+  <div class="status">
+    <div class="dot off" id="sDot"></div>
+    <div><div class="st-t" id="sText">Not connected</div><div class="st-s" id="sSub">Enable to start correcting</div></div>
   </div>
-
-  <div class="game-banner" id="gameBanner">
-    <div class="game-icon" id="gameIcon">?</div>
-    <div>
-      <div class="game-name" id="gameName">Detecting game...</div>
-      <div class="game-genre" id="gameGenre"></div>
-    </div>
-    <div class="game-badge" id="gameBadge">LIVE</div>
+  <div class="game" id="gBanner">
+    <div class="g-ic" id="gIcon">?</div>
+    <div><div class="g-name" id="gName">Detecting...</div><div class="g-genre" id="gGenre"></div></div>
+    <div class="g-live">LIVE</div>
   </div>
-
-  <div class="section">
-    <div class="section-title">Correction</div>
-    <div class="toggle-row">
-      <span class="label">Color correction</span>
-      <button class="toggle" id="toggleEnabled" aria-label="Enable color correction"></button>
+  <div class="sec">
+    <div class="sec-t">Correction</div>
+    <div class="row"><span class="lbl">Color correction</span><button class="tog" id="tOn"></button></div>
+    <div class="row"><span class="lbl">Outline overlays</span><button class="tog on" id="tOv"></button></div>
+    <div class="canvas-info" id="cInfo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M2 8h20M8 2v20"/></svg>
+      <span id="cCount">0</span> canvas(es) — shader active
     </div>
-    <div class="toggle-row">
-      <span class="label">Outline overlays</span>
-      <button class="toggle on" id="toggleOverlays" aria-label="Enable outline overlays"></button>
-    </div>
-    <div class="canvas-info" id="canvasInfo" style="display:none">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M2 8h20M8 2v20"/></svg>
-      <span id="canvasCount">0</span> game canvas(es) detected â€” shader correction active
+    <div class="metrics-row" id="mRow" style="display:none">
+      <div class="metric" id="mFps"><div class="mv">—</div><div class="ml">FPS</div></div>
+      <div class="metric" id="mLat"><div class="mv">—</div><div class="ml">Latency</div></div>
+      <div class="metric" id="mPipe"><div class="mv">0</div><div class="ml">Pipelines</div></div>
     </div>
   </div>
-
-  <div class="section" style="padding-top: 0;">
-    <div class="section-title">Your Profile</div>
-    <div class="profile-card">
-      <div class="profile-row"><span class="key">Type</span><span class="val" id="pType">Not assessed</span></div>
-      <div class="profile-row"><span class="key">Severity</span><span class="val" id="pSeverity">â€”</span></div>
-      <div class="profile-row"><span class="key">Contrast</span><span class="val" id="pContrast">50%</span></div>
-      <div class="profile-row"><span class="key">Outlines</span><span class="val" id="pOutline">2px</span></div>
+  <div class="sec" style="padding-top:0">
+    <div class="sec-t">Your Profile</div>
+    <div class="p-card">
+      <div class="p-row"><span class="k">Type</span><span class="v" id="pType">Not assessed</span></div>
+      <div class="p-row"><span class="k">Severity</span><span class="v" id="pSev">—</span></div>
+      <div class="p-row"><span class="k">Contrast</span><span class="v" id="pCon">50%</span></div>
     </div>
   </div>
-
-  <div class="section" style="padding-top: 0;">
-    <button class="btn btn-primary" id="btnTakeAssessment">Take Assessment</button>
-    <button class="btn btn-secondary" id="btnOpenDashboard" style="margin-top: 8px;">Open Dashboard</button>
+  <div class="sec" style="padding-top:0">
+    <button class="btn btn-p" id="bAssess">Take Assessment</button>
+    <button class="btn btn-s" id="bDash" style="margin-top:6px">Open Dashboard</button>
   </div>
-
-  <div class="footer">
-    <a href="#" id="linkDashboard">visionadapt.vercel.app</a> â€” See every game clearly
+  <div class="sec" style="padding-top:0">
+    <div class="sec-t">Diagnostics</div>
+    <div class="diag" id="diagBox" style="display:none">
+      <div class="d-row"><span class="dk">Backend</span><span id="dBk">—</span></div>
+      <div class="d-row"><span class="dk">Extension</span><span id="dEx">—</span></div>
+      <div class="d-row"><span class="dk">Backend latency</span><span id="dBkLat">—</span></div>
+      <div class="d-row"><span class="dk">Extension latency</span><span id="dExLat">—</span></div>
+    </div>
+    <button class="btn-diag" id="bDiag">Run Self-Diagnostic</button>
   </div>
-
+  <div class="ftr"><a href="#" id="lSite">visionadapt.vercel.app</a></div>
   <script src="popup.js"></script>
 </body>
 </html>

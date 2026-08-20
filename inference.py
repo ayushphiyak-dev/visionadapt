@@ -1,20 +1,6 @@
-"""
-inference.py
-------------
-Image classification via Hugging Face Serverless Inference API
-with local scikit-learn fallback.
-
-Primary:  POST to https://api-inference.huggingface.co/models/<model_id>
-Fallback: Run the local CVD type classifier from model_weights.json
-
-The HF API is free for small workloads (rate-limited). If it's down,
-rate-limited, or the key is missing, the local fallback handles the
-request transparently.
-"""
 import json
 import os
 import time
-import base64
 import logging
 
 import requests
@@ -25,7 +11,6 @@ logger = logging.getLogger("visionadapt.inference")
 HF_API_URL = "https://api-inference.huggingface.co/models/{model_id}"
 HF_API_KEY = os.getenv("HF_API_KEY", "")
 
-# Load local model weights (for fallback)
 _local_model = None
 _weights_path = os.path.join(os.path.dirname(__file__), "model_weights.json")
 
@@ -37,16 +22,17 @@ def _load_local_model():
     try:
         with open(_weights_path) as f:
             _local_model = json.load(f)
-        logger.info("Local model weights loaded from %s", _weights_path)
+        logger.info("Local model weights loaded")
     except FileNotFoundError:
-        logger.warning("model_weights.json not found at %s — local fallback unavailable", _weights_path)
+        logger.warning("model_weights.json not found — local fallback unavailable")
         _local_model = {}
     return _local_model
 
 
 def _forward_pass(weights: dict, features: list[float], output_activation: str = "softmax") -> list[float]:
-    """Run a simple feed-forward pass: input -> hidden layers -> output."""
-    layers = weights["layers"]
+    layers = weights.get("layers", [])
+    if not layers:
+        return []
     h = np.array(features, dtype=np.float64)
     for i, layer in enumerate(layers):
         W = np.array(layer["W"])
@@ -54,73 +40,71 @@ def _forward_pass(weights: dict, features: list[float], output_activation: str =
         h = h @ W + b
         is_last = i == len(layers) - 1
         if not is_last:
-            h = np.maximum(h, 0)  # ReLU
+            h = np.maximum(h, 0)
         elif output_activation == "softmax":
             h = np.exp(h - np.max(h))
-            h = h / h.sum()
+            total = h.sum()
+            h = h / total if total > 0 else h * 0
     return h.tolist()
 
 
 def query_huggingface(image_data: str, model_id: str = "google/vit-base-patch16-224") -> dict:
-    """
-    Send an image to the Hugging Face Inference API.
-    image_data can be a URL or base64-encoded image bytes.
-    """
     if not HF_API_KEY:
-        return {"error": "HF_API_KEY not configured"}
+        return {"error": "HF_API_KEY not configured", "latency_ms": 0}
 
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-
-    # Determine if it's a URL or base64
-    if image_data.startswith(("http://", "https://")):
-        payload = {"inputs": image_data}
-    else:
-        # Assume base64
-        payload = {"inputs": image_data}
-
+    payload = {"inputs": image_data}
     url = HF_API_URL.format(model_id=model_id)
+
     try:
         t0 = time.time()
-        resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        resp = requests.post(url, headers=headers, json=payload, timeout=15)
         latency_ms = (time.time() - t0) * 1000
 
         if resp.status_code == 200:
-            return {
-                "predictions": resp.json(),
-                "latency_ms": round(latency_ms, 2),
-                "model": model_id,
-            }
+            return {"predictions": resp.json(), "latency_ms": round(latency_ms, 2), "model": model_id}
+        elif resp.status_code == 503:
+            return {"error": f"Model {model_id} is loading, try again later", "latency_ms": round(latency_ms, 2)}
+        elif resp.status_code == 429:
+            return {"error": "Rate limited by HuggingFace API", "latency_ms": round(latency_ms, 2)}
         else:
             logger.warning("HF API returned %d: %s", resp.status_code, resp.text[:200])
-            return {"error": f"HF API returned status {resp.status_code}"}
+            return {"error": f"HF API status {resp.status_code}", "latency_ms": round(latency_ms, 2)}
+    except requests.Timeout:
+        return {"error": "HuggingFace API request timed out (15s)", "latency_ms": 15000}
+    except requests.ConnectionError:
+        return {"error": "Cannot reach HuggingFace API", "latency_ms": 0}
     except requests.RequestException as e:
         logger.error("HF API request failed: %s", e)
-        return {"error": str(e)}
+        return {"error": f"Request failed: {str(e)[:200]}", "latency_ms": 0}
 
 
 def predict_local(feature_vector: list[float]) -> dict:
-    """
-    Run the local CVD classifier on a 12-dim feature vector.
-    Returns axis label, probabilities, and severity estimate.
-    """
     model = _load_local_model()
     if not model:
-        return {"error": "Local model not loaded"}
+        return {"error": "Local model weights not loaded"}
+
+    if len(feature_vector) != model.get("feature_dim", 12):
+        return {"error": f"Expected {model.get('feature_dim', 12)}-dim vector, got {len(feature_vector)}"}
 
     try:
         t0 = time.time()
 
-        # Axis classifier
         axis_weights = model.get("axis_classifier", {})
+        if not axis_weights.get("layers"):
+            return {"error": "Axis classifier weights missing"}
         axis_probs = _forward_pass(axis_weights, feature_vector, "softmax")
         axis_idx = axis_probs.index(max(axis_probs))
         axis_labels = model.get("axis_labels", ["Typical", "Red-green", "Blue-yellow"])
         axis_label = axis_labels[axis_idx] if axis_idx < len(axis_labels) else "Unknown"
 
-        # Severity regressor
         sev_weights = model.get("severity_regressor", {})
+        if not sev_weights.get("layers"):
+            return {"error": "Severity regressor weights missing"}
         severity_raw = _forward_pass(sev_weights, feature_vector, "linear")
-        severity = float(np.clip(severity_raw[0] if isinstance(severity_raw, list) else severity_raw, 0, 100))
+        severity = float(np.clip(
+            severity_raw[0] if isinstance(severity_raw, list) and severity_raw else 0, 0, 100
+        ))
 
         latency_ms = (time.time() - t0) * 1000
 
@@ -133,15 +117,10 @@ def predict_local(feature_vector: list[float]) -> dict:
         }
     except Exception as e:
         logger.error("Local inference failed: %s", e)
-        return {"error": str(e)}
+        return {"error": f"Inference failed: {str(e)[:200]}"}
 
 
 def classify_image(image_url: str, model_id: str = "google/vit-base-patch16-224") -> dict:
-    """
-    Main classification entry point.
-    Tries Hugging Face API first, falls back to local model.
-    """
-    # Try HF API
     hf_result = query_huggingface(image_url, model_id)
     if "error" not in hf_result:
         return {
@@ -152,9 +131,8 @@ def classify_image(image_url: str, model_id: str = "google/vit-base-patch16-224"
             "latency_ms": hf_result.get("latency_ms"),
         }
 
-    # Fallback to local model
-    logger.info("HF API unavailable, falling back to local model")
-    local_result = predict_local([0] * 12)  # default zero vector for image-based requests
+    logger.info("HF API unavailable (%s), falling back to local model", hf_result.get("error"))
+    local_result = predict_local([0] * 12)
     if "error" not in local_result:
         return {
             "status": "success_fallback",
@@ -169,19 +147,48 @@ def classify_image(image_url: str, model_id: str = "google/vit-base-patch16-224"
         "predictions": {},
         "source": "none",
         "model_used": "none",
-        "error": f"HF API: {hf_result.get('error')}, Local: {local_result.get('error')}",
+        "error": f"HF: {hf_result.get('error')}; Local: {local_result.get('error')}",
     }
 
 
 def get_local_model_info() -> dict:
-    """Return metadata about the locally loaded model."""
     model = _load_local_model()
     if not model:
-        return {"loaded": False}
+        return {"loaded": False, "error": "weights file missing"}
     return {
         "loaded": True,
         "axis_labels": model.get("axis_labels", []),
         "plate_keys": model.get("plate_keys", []),
         "confuse_options": model.get("confuse_options", []),
         "feature_dim": model.get("feature_dim", 12),
+        "layers": len(model.get("axis_classifier", {}).get("layers", [])),
+    }
+
+
+def run_diagnostics() -> dict:
+    errors = []
+    t0 = time.time()
+
+    model = _load_local_model()
+    model_loaded = bool(model and model.get("layers"))
+
+    hf_configured = bool(HF_API_KEY)
+
+    inference_ok = False
+    if model_loaded:
+        test_result = predict_local([1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0])
+        inference_ok = "error" not in test_result
+        if not inference_ok:
+            errors.append(f"Local inference test failed: {test_result.get('error')}")
+
+    latency_ms = (time.time() - t0) * 1000
+
+    return {
+        "backend_reachable": True,
+        "auth_working": True,
+        "inference_available": inference_ok or hf_configured,
+        "hf_api_configured": hf_configured,
+        "local_model_loaded": model_loaded,
+        "latency_ms": round(latency_ms, 2),
+        "errors": errors,
     }
