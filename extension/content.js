@@ -1,555 +1,322 @@
-/*
- * content.js — VisionAdapt Content Script
- *
- * TWO correction pipelines:
- *
- * 1. DOM-based games (CSS filter injection)
- *    Works on any page with CSS-styled elements.
- *
- * 2. Canvas/WebGL games (shader interception)
- *    Intercepts getContext('2d'/'webgl'/'webgl2'), creates an
- *    offscreen WebGL correction pipeline, and composites corrected
- *    frames back onto the original canvas every animation frame.
- *    This is the core USP — it works on ANY canvas-based online game.
- *
- * Supported games (auto-detected):
- *   Krunker.io, Shell Shockers, Slope, 1v1.LOL, Zombs Royale,
- *   Paper.io, Surviv.io, Netbattle, TETRIS, Chess.com, Lichess,
- *   Slither.io, Agar.io, Diep.io, and any WebGL/2D canvas game.
- */
 (function () {
   "use strict";
+  if (window.__va) return;
+  window.__va = true;
 
-  if (window.__visionadapt_injected) return;
-  window.__visionadapt_injected = true;
+  const storage = chrome.storage?.local;
 
-  const storage = chrome.storage.local;
-
-  // ======================================================================
-  // CVD CORRECTION MATRICES (Machado, Oliveira & Fitzpatrick 2009)
-  // These simulate how to SHIFT colors so a deficient viewer can
-  // distinguish them. Applied as a 4x4 color matrix in the shader.
-  // ======================================================================
-
-  // LMS-based correction matrices for each CVD type.
-  // Format: column-major 4x4 matrix (matches WebGL uniformMatrix4fv)
-  const CORRECTION_MATRICES = {
-    // Protanopia/Protanomaly: boost green channel, reduce red-green overlap
+  const MAT = {
     protan: new Float32Array([
-      1.20, -0.10, 0.00, 0,
-     -0.10,  1.15, 0.00, 0,
-      0.00,  0.15, 1.05, 0,
-      0,     0,    0,    1
+      1.20,-.10,.00,0, -.10,1.15,.00,0, .00,.15,1.05,0, 0,0,0,1
     ]),
-    // Deuteranopia/Deuteranomaly: boost red, shift green away from brown
     deutan: new Float32Array([
-      1.15, -0.05, 0.00, 0,
-     -0.05,  1.20, 0.00, 0,
-      0.00,  0.10, 1.10, 0,
-      0,     0,    0,    1
+      1.15,-.05,.00,0, -.05,1.20,.00,0, .00,.10,1.10,0, 0,0,0,1
     ]),
-    // Tritanopia/Tritanomaly: boost blue-yellow separation
     tritan: new Float32Array([
-      1.05,  0.00, -0.10, 0,
-      0.00,  1.05,  0.05, 0,
-     -0.08,  0.05,  1.15, 0,
-      0,     0,     0,    1
+      1.05,.00,-.10,0, .00,1.05,.05,0, -.08,.05,1.15,0, 0,0,0,1
     ]),
   };
 
-  const TYPE_TO_MATRIX_KEY = {
-    Protanomaly: "protan", Protanopia: "protan",
-    Deuteranomaly: "deutan", Deuteranopia: "deutan",
-    Tritanomaly: "tritan", Tritanopia: "tritan",
+  const TYPE_KEY = {
+    Protanomaly:"protan", Protanopia:"protan",
+    Deuteranomaly:"deutan", Deuteranopia:"deutan",
+    Tritanomaly:"tritan", Tritanopia:"tritan",
   };
 
-  // ======================================================================
-  // STATE
-  // ======================================================================
+  let profile = null;
+  let enabled = false;
+  let matrix = null;
+  const activeCanvases = new Set();
+  let currentFps = 0;
+  let frameCount = 0;
+  let lastFpsTime = 0;
 
-  let currentProfile = null;
-  let correctionEnabled = false;
-  let overlayEnabled = true;
-  let correctionMatrix = null;
+  function injectMainWorld() {
+    if (document.getElementById("va-inject")) return;
+    const script = document.createElement("script");
+    script.id = "va-inject";
+    script.textContent = `(function(){
+      if(window.__vaMain) return;
+      window.__vaMain = true;
+      window.__vaCanvases = [];
+      var orig = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function(type, attrs) {
+        var ctx = orig.call(this, type, attrs);
+        if(type==="2d"||type==="webgl"||type==="webgl2") {
+          window.__vaCanvases.push({canvas:this, type:type, ts:Date.now()});
+          window.dispatchEvent(new CustomEvent("va:canvas",{detail:{canvas:this,type:type}}));
+        }
+        return ctx;
+      };
+    })();`;
+    (document.head || document.documentElement).appendChild(script);
+    script.remove();
+  }
 
-  // Canvas correction instances
-  const canvasCorrections = new Map(); // canvas -> CorrectionPipeline
+  let cssEl = null;
 
-  // ======================================================================
-  // 1. DOM-BASED CORRECTION (CSS Filters)
-  // ======================================================================
-
-  let styleEl = null;
-
-  function injectSVGFilters() {
-    if (document.getElementById("va-svg-filters")) return;
+  function injectFilters() {
+    if (document.getElementById("va-filters")) return;
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.id = "va-svg-filters";
-    svg.setAttribute("width", "0");
-    svg.setAttribute("height", "0");
+    svg.id = "va-filters";
+    svg.setAttribute("width","0"); svg.setAttribute("height","0");
     svg.style.position = "absolute";
-    svg.innerHTML = `
-      <defs>
-        <filter id="va-correct-protan">
-          <feColorMatrix type="matrix" values="
-            1.20 -0.10 0.00 0 0
-           -0.10  1.15 0.00 0 0
-            0.00  0.15 1.05 0 0
-            0     0    0    1 0"/>
-        </filter>
-        <filter id="va-correct-deutan">
-          <feColorMatrix type="matrix" values="
-            1.15 -0.05 0.00 0 0
-           -0.05  1.20 0.00 0 0
-            0.00  0.10 1.10 0 0
-            0     0    0    1 0"/>
-        </filter>
-        <filter id="va-correct-tritan">
-          <feColorMatrix type="matrix" values="
-            1.05  0.00 -0.10 0 0
-            0.00  1.05  0.05 0 0
-           -0.08  0.05  1.15 0 0
-            0     0     0    1 0"/>
-        </filter>
-      </defs>`;
+    svg.innerHTML = '<defs>' +
+      '<filter id="va-f-protan"><feColorMatrix type="matrix" values="1.20 -.10 .00 0 0 -.10 1.15 .00 0 0 .00 .15 1.05 0 0 0 0 0 1 0"/></filter>' +
+      '<filter id="va-f-deutan"><feColorMatrix type="matrix" values="1.15 -.05 .00 0 0 -.05 1.20 .00 0 0 .00 .10 1.10 0 0 0 0 0 1 0"/></filter>' +
+      '<filter id="va-f-tritan"><feColorMatrix type="matrix" values="1.05 .00 -.10 0 0 .00 1.05 .05 0 0 -.08 .05 1.15 0 0 0 0 0 1 0"/></filter>' +
+      '</defs>';
     document.documentElement.appendChild(svg);
   }
 
-  function applyDOMCorrection(profile) {
-    const key = TYPE_TO_MATRIX_KEY[profile.type];
-    if (!key) { removeDOMCorrection(); return; }
-
-    injectSVGFilters();
-    if (!styleEl) {
-      styleEl = document.createElement("style");
-      styleEl.id = "va-correction-style";
-      document.head.appendChild(styleEl);
-    }
-
-    const contrastPct = 50 + (profile.contrast - 50) * 0.6;
-    styleEl.textContent = `
-      html.va-corrected {
-        filter: url(#va-correct-${key}) contrast(${contrastPct}%) !important;
-        transition: filter 0.3s ease;
-      }
-      html.va-corrected img,
-      html.va-corrected video {
-        filter: url(#va-correct-${key}) !important;
-      }
-    `;
-    document.documentElement.classList.add("va-corrected");
+  function applyDOM(p) {
+    const key = TYPE_KEY[p.type];
+    if (!key) { removeDOM(); return; }
+    injectFilters();
+    if (!cssEl) { cssEl = document.createElement("style"); cssEl.id = "va-css"; (document.head||document.documentElement).appendChild(cssEl); }
+    const c = 50 + (p.contrast - 50) * 0.6;
+    cssEl.textContent = 'html.va-on{filter:url(#va-f-' + key + ') contrast(' + c + '%)!important;transition:filter .3s} html.va-on img,html.va-on video{filter:url(#va-f-' + key + ')!important}';
+    document.documentElement.classList.add("va-on");
   }
 
-  function removeDOMCorrection() {
-    if (styleEl) styleEl.textContent = "";
-    document.documentElement.classList.remove("va-corrected");
+  function removeDOM() {
+    if (cssEl) cssEl.textContent = "";
+    document.documentElement.classList.remove("va-on");
   }
 
-  // ======================================================================
-  // 2. CANVAS/WebGL CORRECTION (The Core USP)
-  //
-  // Strategy: Intercept getContext('2d'/'webgl'/'webgl2') on ALL canvases.
-  // For each game canvas, create a parallel WebGL correction pipeline:
-  //   original canvas -> texImage2D -> fragment shader (color matrix) -> draw to screen
-  // Runs at requestAnimationFrame rate — matches the game's frame rate.
-  // ======================================================================
+  const VS = "attribute vec2 a_p;attribute vec2 a_t;varying vec2 v_t;void main(){gl_Position=vec4(a_p,0,1);v_t=a_t;}";
+  const FS = "precision mediump float;varying vec2 v_t;uniform sampler2D u_tex;uniform mat4 u_mat;uniform float u_sev;uniform float u_con;void main(){vec4 c=texture2D(u_tex,v_t);vec4 r=u_mat*c;c=mix(c,r,u_sev);float f=(100.0+u_con)/100.0;c.rgb=(c.rgb-0.5)*f+0.5;c.rgb=clamp(c.rgb,0.0,1.0);gl_FragColor=c;}";
 
-  function createCorrectionPipeline(originalCanvas) {
-    // Create an offscreen WebGL context for color correction
-    const offscreen = document.createElement("canvas");
-    offscreen.width = originalCanvas.width || 800;
-    offscreen.height = originalCanvas.height || 600;
-    offscreen.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999998;";
+  function mkShader(gl, type, src) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { gl.deleteShader(s); return null; }
+    return s;
+  }
 
-    const gl = offscreen.getContext("webgl2") || offscreen.getContext("webgl");
-    if (!gl) {
-      console.warn("[VisionAdapt] WebGL not available for canvas correction");
-      return null;
-    }
-
-    // --- Shaders ---
-    const vsSource = `
-      attribute vec2 a_position;
-      attribute vec2 a_texCoord;
-      varying vec2 v_texCoord;
-      void main() {
-        gl_Position = vec4(a_position, 0.0, 1.0);
-        v_texCoord = a_texCoord;
-      }
-    `;
-
-    const fsSource = `
-      precision mediump float;
-      varying vec2 v_texCoord;
-      uniform sampler2D u_image;
-      uniform mat4 u_correctionMatrix;
-      uniform float u_contrast;
-      uniform float u_severity;
-
-      void main() {
-        vec4 color = texture2D(u_image, v_texCoord);
-
-        // Apply correction matrix blended by severity (0-1)
-        vec4 corrected = u_correctionMatrix * color;
-
-        // Mix original and corrected based on severity
-        color = mix(color, corrected, u_severity);
-
-        // Adaptive contrast enhancement
-        float contrastFactor = (100.0 + u_contrast) / 100.0;
-        color.rgb = (color.rgb - 0.5) * contrastFactor + 0.5;
-
-        color.rgb = clamp(color.rgb, 0.0, 1.0);
-        gl_FragColor = color;
-      }
-    `;
-
-    function compileShader(type, source) {
-      const s = gl.createShader(type);
-      gl.shaderSource(s, source);
-      gl.compileShader(s);
-      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-        console.error("[VisionAdapt] Shader compile error:", gl.getShaderInfoLog(s));
-        gl.deleteShader(s);
-        return null;
-      }
-      return s;
-    }
-
-    const vs = compileShader(gl.VERTEX_SHADER, vsSource);
-    const fs = compileShader(gl.FRAGMENT_SHADER, fsSource);
+  function mkProgram(gl) {
+    var vs = mkShader(gl, gl.VERTEX_SHADER, VS);
+    var fs = mkShader(gl, gl.FRAGMENT_SHADER, FS);
     if (!vs || !fs) return null;
+    var pg = gl.createProgram();
+    gl.attachShader(pg, vs); gl.attachShader(pg, fs); gl.linkProgram(pg);
+    if (!gl.getProgramParameter(pg, gl.LINK_STATUS)) return null;
+    gl.useProgram(pg);
 
-    const program = gl.createProgram();
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error("[VisionAdapt] Program link error:", gl.getProgramInfoLog(program));
-      return null;
-    }
+    var pb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, pb);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
+    var pl = gl.getAttribLocation(pg, "a_p");
+    gl.enableVertexAttribArray(pl); gl.vertexAttribPointer(pl, 2, gl.FLOAT, false, 0, 0);
 
-    gl.useProgram(program);
+    var tb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, tb);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,1,1,1,0,0,0,0,1,1,1,0]), gl.STATIC_DRAW);
+    var tl = gl.getAttribLocation(pg, "a_t");
+    gl.enableVertexAttribArray(tl); gl.vertexAttribPointer(tl, 2, gl.FLOAT, false, 0, 0);
 
-    // --- Geometry: fullscreen quad ---
-    const posBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-      -1, -1,  1, -1,  -1, 1,
-      -1,  1,  1, -1,   1, 1
-    ]), gl.STATIC_DRAW);
-
-    const posLoc = gl.getAttribLocation(program, "a_position");
-    gl.enableVertexAttribArray(posLoc);
-    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-
-    const texBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-      0, 1,  1, 1,  0, 0,
-      0, 0,  1, 1,  1, 0
-    ]), gl.STATIC_DRAW);
-
-    const texLoc = gl.getAttribLocation(program, "a_texCoord");
-    gl.enableVertexAttribArray(texLoc);
-    gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
-
-    // --- Texture for the original canvas ---
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+    var tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-    // --- Uniform locations ---
-    const matrixLoc = gl.getUniformLocation(program, "u_correctionMatrix");
-    const contrastLoc = gl.getUniformLocation(program, "u_contrast");
-    const severityLoc = gl.getUniformLocation(program, "u_severity");
-
-    // --- Insert overlay canvas into DOM ---
-    function insertOverlay() {
-      const parent = originalCanvas.parentElement || document.body;
-      if (!parent.contains(offscreen)) {
-        parent.style.position = parent.style.position || "relative";
-        parent.insertBefore(offscreen, originalCanvas.nextSibling);
-      }
-    }
-
-    // --- Render one corrected frame ---
-    let running = false;
-    function renderFrame() {
-      if (!running || !correctionEnabled) return;
-
-      // Sync size
-      if (offscreen.width !== originalCanvas.width || offscreen.height !== originalCanvas.height) {
-        offscreen.width = originalCanvas.width;
-        offscreen.height = originalCanvas.height;
-        gl.viewport(0, 0, offscreen.width, offscreen.height);
-      }
-
-      // Upload original canvas as texture
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, originalCanvas);
-
-      // Set uniforms
-      gl.uniformMatrix4fv(matrixLoc, false, correctionMatrix);
-      gl.uniform1f(contrastLoc, currentProfile ? currentProfile.contrast : 50);
-      gl.uniform1f(severityLoc, currentProfile ? currentProfile.severity / 100 : 0.5);
-
-      // Draw corrected frame
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-      requestAnimationFrame(renderFrame);
-    }
-
-    function start() {
-      if (running) return;
-      running = true;
-      insertOverlay();
-      renderFrame();
-    }
-
-    function stop() {
-      running = false;
-      if (offscreen.parentElement) {
-        offscreen.parentElement.removeChild(offscreen);
-      }
-    }
-
-    function updateMatrix(m) {
-      correctionMatrix = m;
-    }
-
-    return { start, stop, updateMatrix, offscreen, gl };
+    return {
+      pg: pg, tex: tex, gl: gl,
+      uMat: gl.getUniformLocation(pg, "u_mat"),
+      uSev: gl.getUniformLocation(pg, "u_sev"),
+      uCon: gl.getUniformLocation(pg, "u_con"),
+    };
   }
 
-  // --- Intercept getContext on ALL canvases ---
-  const origGetContext = HTMLCanvasElement.prototype.getContext;
-  HTMLCanvasElement.prototype.getContext = function (type, attrs) {
-    const ctx = origGetContext.call(this, type, attrs);
+  function startPipeline(srcCanvas) {
+    if (activeCanvases.has(srcCanvas)) return;
+    var w = srcCanvas.width || srcCanvas.offsetWidth;
+    var h = srcCanvas.height || srcCanvas.offsetHeight;
+    if (w < 200 || h < 150) return;
 
-    // Only intercept canvases that look like game canvases
-    if (type === "2d" || type === "webgl" || type === "webgl2") {
-      // Use MutationObserver to detect when this canvas is added to DOM
-      const checkAndIntercept = () => {
-        if (this.parentElement && correctionEnabled && correctionMatrix && !canvasCorrections.has(this)) {
-          // Delay slightly to let the game initialize its rendering
-          setTimeout(() => {
-            if (!canvasCorrections.has(this) && correctionEnabled) {
-              const pipeline = createCorrectionPipeline(this);
-              if (pipeline) {
-                pipeline.updateMatrix(correctionMatrix);
-                canvasCorrections.set(this, pipeline);
-                pipeline.start();
-              }
-            }
-          }, 1500); // Wait 1.5s for game to initialize
-        }
-      };
+    var off = document.createElement("canvas");
+    off.width = w; off.height = h;
+    off.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999998;";
+    var gl = off.getContext("webgl2") || off.getContext("webgl");
+    if (!gl) return;
 
-      // Check now and also observe DOM changes
-      checkAndIntercept();
-      if (!window.__va_dom_observer) {
-        window.__va_dom_observer = new MutationObserver(() => {
-          document.querySelectorAll("canvas").forEach(c => {
-            if (c.parentElement && correctionEnabled && correctionMatrix && !canvasCorrections.has(c)) {
-              const pipeline = createCorrectionPipeline(c);
-              if (pipeline) {
-                pipeline.updateMatrix(correctionMatrix);
-                canvasCorrections.set(c, pipeline);
-                pipeline.start();
-              }
-            }
-          });
-        });
-        window.__va_dom_observer.observe(document.body, { childList: true, subtree: true });
+    var prog = mkProgram(gl);
+    if (!prog) return;
+
+    var par = srcCanvas.parentElement || document.body;
+    par.style.position = par.style.position || "relative";
+    par.insertBefore(off, srcCanvas.nextSibling);
+
+    var running = true;
+    var raf = null;
+
+    function frame() {
+      if (!running || !enabled) { raf = null; return; }
+      if (off.width !== srcCanvas.width || off.height !== srcCanvas.height) {
+        off.width = srcCanvas.width; off.height = srcCanvas.height;
+        gl.viewport(0, 0, off.width, off.height);
       }
+      gl.bindTexture(gl.TEXTURE_2D, prog.tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, srcCanvas);
+      gl.uniformMatrix4fv(prog.uMat, false, matrix);
+      gl.uniform1f(prog.uSev, profile ? profile.severity / 100 : 0.5);
+      gl.uniform1f(prog.uCon, profile ? profile.contrast : 50);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      frameCount++;
+      var now = performance.now();
+      if (now - lastFpsTime >= 1000) {
+        currentFps = Math.round(frameCount * 1000 / (now - lastFpsTime));
+        frameCount = 0; lastFpsTime = now;
+        reportMetrics();
+      }
+      raf = requestAnimationFrame(frame);
     }
 
-    return ctx;
-  };
+    lastFpsTime = performance.now();
+    frameCount = 0;
+    raf = requestAnimationFrame(frame);
 
-  // ======================================================================
-  // 3. GAME DETECTION
-  // ======================================================================
+    activeCanvases.add(srcCanvas);
+    activeCanvases._cleanup = function() {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      if (off.parentElement) off.parentElement.removeChild(off);
+    };
+    activeCanvases._off = off;
+  }
 
-  const GAME_PATTERNS = [
-    // FPS / Action
-    { patterns: ["krunker.io", "krunker"], name: "Krunker.io", genre: "FPS" },
-    { patterns: ["shellshock.io", "shell shock"], name: "Shell Shockers", genre: "FPS" },
-    { patterns: ["1v1.lol"], name: "1v1.LOL", genre: "Building/Shooter" },
-    { patterns: ["zombsroyale.io"], name: "Zombs Royale", genre: "Battle Royale" },
-    { patterns: ["surviv.io"], name: "Surviv.io", genre: "Battle Royale" },
-    { patterns: ["slither.io"], name: "Slither.io", genre: "Arcade" },
-    { patterns: ["agar.io"], name: "Agar.io", genre: "Arcade" },
-    { patterns: ["diep.io"], name: "Diep.io", genre: "Tank Shooter" },
-    { patterns: ["slope", "slope-game"], name: "Slope", genre: "Runner" },
-    { patterns: ["paper-io"], name: "Paper.io", genre: "Arcade" },
-    { patterns: ["tetris"], name: "TETRIS", genre: "Puzzle" },
-    { patterns: ["chess.com", "lichess"], name: "Chess", genre: "Strategy" },
-    { patterns: ["roblox.com"], name: "Roblox", genre: "Platform" },
-    { patterns: ["poki.com"], name: "Poki Games", genre: "Various" },
-    { patterns: ["crazygames.com"], name: "CrazyGames", genre: "Various" },
-    { patterns: ["miniclip.com"], name: "Miniclip", genre: "Various" },
-    { patterns: ["y8.com"], name: "Y8 Games", genre: "Various" },
-    { patterns: ["kongregate.com"], name: "Kongregate", genre: "Various" },
-    { patterns: ["newgrounds.com"], name: "Newgrounds", genre: "Various" },
+  function stopAllPipelines() {
+    if (activeCanvases._cleanup) activeCanvases._cleanup();
+    activeCanvases.clear();
+    activeCanvases._cleanup = null;
+  }
+
+  window.addEventListener("va:canvas", function(e) {
+    if (!enabled || !matrix) return;
+    var canvas = e.detail.canvas;
+    if (!activeCanvases.has(canvas)) {
+      setTimeout(function() { startPipeline(canvas); }, 600);
+    }
+  });
+
+  function scanCanvases() {
+    if (!enabled || !matrix) return;
+    document.querySelectorAll("canvas").forEach(function(c) {
+      if (!activeCanvases.has(c) && c.parentElement) {
+        var w = c.width || c.offsetWidth;
+        var h = c.height || c.offsetHeight;
+        if (w >= 200 && h >= 150) startPipeline(c);
+      }
+    });
+  }
+
+  var GAMES = [
+    {p:["krunker.io"],n:"Krunker.io",g:"FPS"},
+    {p:["shellshock.io"],n:"Shell Shockers",g:"FPS"},
+    {p:["1v1.lol"],n:"1v1.LOL",g:"Shooter"},
+    {p:["zombsroyale.io"],n:"Zombs Royale",g:"Battle Royale"},
+    {p:["surviv.io"],n:"Surviv.io",g:"Battle Royale"},
+    {p:["slither.io"],n:"Slither.io",g:"Arcade"},
+    {p:["agar.io"],n:"Agar.io",g:"Arcade"},
+    {p:["diep.io"],n:"Diep.io",g:"Tank Shooter"},
+    {p:["slope"],n:"Slope",g:"Runner"},
+    {p:["paper-io"],n:"Paper.io",g:"Arcade"},
+    {p:["tetris"],n:"TETRIS",g:"Puzzle"},
+    {p:["chess.com","lichess"],n:"Chess",g:"Strategy"},
+    {p:["roblox.com"],n:"Roblox",g:"Platform"},
+    {p:["poki.com"],n:"Poki Games",g:"Various"},
+    {p:["crazygames.com"],n:"CrazyGames",g:"Various"},
+    {p:["miniclip.com"],n:"Miniclip",g:"Various"},
+    {p:["y8.com"],n:"Y8 Games",g:"Various"},
+    {p:["kongregate.com"],n:"Kongregate",g:"Various"},
+    {p:["newgrounds.com"],n:"Newgrounds",g:"Various"},
+    {p:["now.gg"],n:"now.gg Cloud",g:"Cloud Gaming"},
+    {p:["geforce.now"],n:"GeForce NOW",g:"Cloud Gaming"},
+    {p:["xbox.com/play"],n:"Xbox Cloud",g:"Cloud Gaming"},
+    {p:["steam"],n:"Steam Browser",g:"Platform"},
   ];
 
   function detectGame() {
-    const url = window.location.href.toLowerCase();
-    const hostname = window.location.hostname.toLowerCase();
-
-    for (const game of GAME_PATTERNS) {
-      for (const p of game.patterns) {
-        if (hostname.includes(p) || url.includes(p)) {
-          return game;
-        }
+    var host = location.hostname.toLowerCase();
+    for (var i = 0; i < GAMES.length; i++) {
+      var g = GAMES[i];
+      for (var j = 0; j < g.p.length; j++) {
+        if (host.indexOf(g.p[j]) !== -1) return g;
       }
     }
-
-    // Heuristic: if page has a large canvas, it's likely a game
-    const canvases = document.querySelectorAll("canvas");
-    for (const c of canvases) {
-      const w = c.width || c.offsetWidth;
-      const h = c.height || c.offsetHeight;
-      if (w > 400 && h > 300) {
-        return { name: "Unknown Game", genre: "Canvas Game", patterns: [] };
-      }
+    var cs = document.querySelectorAll("canvas");
+    for (var k = 0; k < cs.length; k++) {
+      var cw = cs[k].width || cs[k].offsetWidth;
+      var ch = cs[k].height || cs[k].offsetHeight;
+      if (cw > 400 && ch > 300) return { n: "Canvas Game", g: "WebGL/2D", p: [] };
     }
-
     return null;
   }
 
-  // ======================================================================
-  // 4. OUTLINE OVERLAY (DOM-based elements in games)
-  // ======================================================================
-
-  function addOutlineOverlays() {
-    if (!overlayEnabled || !currentProfile) return;
-
-    // For DOM-based games, add outlines to interactive elements
-    const selectors = [
-      ".enemy", ".player", ".teammate",
-      "[data-team]", ".health-bar", ".ammo",
-      ".pickup", ".item", ".weapon",
-    ];
-
-    document.querySelectorAll(selectors.join(",")).forEach(el => {
-      if (!el.dataset.vaOutlined) {
-        el.style.outline = "2px dashed rgba(255,255,255,0.8)";
-        el.style.outlineOffset = "2px";
-        el.dataset.vaOutlined = "true";
-      }
-    });
+  function reportMetrics() {
+    try {
+      chrome.runtime.sendMessage({
+        type: "METRICS",
+        fps: currentFps,
+        canvases: activeCanvases.size,
+        game: detectGame(),
+      });
+    } catch(e) {}
   }
 
-  // ======================================================================
-  // 5. MESSAGE HANDLER
-  // ======================================================================
-
-  function applyProfile(profile) {
-    if (!profile || profile.type === "Not assessed") {
-      correctionEnabled = false;
-      removeDOMCorrection();
-      canvasCorrections.forEach(p => p.stop());
-      canvasCorrections.clear();
-      return;
-    }
-
-    const key = TYPE_TO_MATRIX_KEY[profile.type];
+  function apply(p) {
+    if (!p || p.type === "Not assessed") { disable(); return; }
+    var key = TYPE_KEY[p.type];
     if (!key) return;
+    profile = p; enabled = true; matrix = MAT[key];
+    applyDOM(p);
+    injectMainWorld();
+    setTimeout(scanCanvases, 500);
+    setInterval(scanCanvases, 3000);
+    var game = detectGame();
+    try { chrome.runtime.sendMessage({ type: "GAME_DETECTED", game: game ? game.n : null, genre: game ? game.g : null }); } catch(e) {}
+  }
 
-    currentProfile = profile;
-    correctionEnabled = true;
-    correctionMatrix = CORRECTION_MATRICES[key];
+  function disable() {
+    enabled = false; removeDOM();
+    stopAllPipelines();
+    try { chrome.runtime.sendMessage({ type: "GAME_DETECTED", game: null, genre: null }); } catch(e) {}
+  }
 
-    // Apply DOM correction
-    applyDOMCorrection(profile);
-
-    // Apply canvas correction to all existing canvases
-    document.querySelectorAll("canvas").forEach(c => {
-      if (c.parentElement && !canvasCorrections.has(c)) {
-        const pipeline = createCorrectionPipeline(c);
-        if (pipeline) {
-          pipeline.updateMatrix(correctionMatrix);
-          canvasCorrections.set(c, pipeline);
-          pipeline.start();
-        }
-      } else if (canvasCorrections.has(c)) {
-        canvasCorrections.get(c).updateMatrix(correctionMatrix);
-      }
-    });
-
-    // Detect and announce game
-    const game = detectGame();
-    if (game) {
-      console.log(`[VisionAdapt] Game detected: ${game.name} (${game.genre})`);
+  chrome.runtime.onMessage.addListener(function(msg, _s, send) {
+    switch (msg.type) {
+      case "APPLY":
+        if (msg.enabled === false) disable();
+        else if (msg.profile) apply(msg.profile);
+        else if (msg.enabled && profile) apply(profile);
+        send({ ok: true }); break;
+      case "TOGGLE_OVERLAYS": send({ ok: true }); break;
+      case "STATUS":
+        var g = detectGame();
+        send({ active: enabled, profile: profile, game: g ? g.n : null, genre: g ? g.g : null,
+          canvases: document.querySelectorAll("canvas").length, pipelines: activeCanvases.size, fps: currentFps });
+        return true;
+      case "PING": send({ pong: true, ts: Date.now() }); return true;
     }
+  });
 
-    // Badge
-    chrome.runtime.sendMessage({
-      type: "GAME_DETECTED",
-      game: game ? game.name : null,
-      genre: game ? game.genre : null,
+  if (storage) {
+    storage.get(["enabled", "profile"], function(d) {
+      if (d && d.enabled && d.profile && d.profile.type !== "Not assessed") {
+        apply(d.profile);
+      }
     });
   }
 
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    switch (msg.type) {
-      case "APPLY_PROFILE":
-        if (msg.enabled === false) {
-          correctionEnabled = false;
-          removeDOMCorrection();
-          canvasCorrections.forEach(p => p.stop());
-          canvasCorrections.clear();
-        } else if (msg.profile) {
-          applyProfile(msg.profile);
-        } else if (msg.enabled === true && currentProfile) {
-          applyProfile(currentProfile);
-        }
-        sendResponse({ ok: true });
-        break;
-
-      case "TOGGLE_OVERLAYS":
-        overlayEnabled = msg.overlays;
-        if (overlayEnabled) addOutlineOverlays();
-        sendResponse({ ok: true });
-        break;
-
-      case "GET_STATUS":
-        const game = detectGame();
-        sendResponse({
-          active: correctionEnabled,
-          profile: currentProfile,
-          game: game ? game.name : null,
-          canvasCount: document.querySelectorAll("canvas").length,
-        });
-        return true;
-    }
-  });
-
-  // ======================================================================
-  // 6. INIT
-  // ======================================================================
-
-  storage.get(["enabled", "profile"], (data) => {
-    if (data.enabled && data.profile && data.profile.type !== "Not assessed") {
-      applyProfile(data.profile);
-    }
-  });
-
-  // Watch for page navigations (SPA games)
-  let lastUrl = location.href;
-  new MutationObserver(() => {
+  var lastUrl = location.href;
+  new MutationObserver(function() {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
-      // Re-detect game on navigation
-      if (correctionEnabled && currentProfile) {
-        setTimeout(() => applyProfile(currentProfile), 2000);
-      }
+      if (enabled && profile) setTimeout(function() { scanCanvases(); }, 1500);
     }
   }).observe(document, { subtree: true, childList: true });
-
 })();
