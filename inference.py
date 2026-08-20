@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import time
@@ -60,7 +61,6 @@ def query_huggingface(image_data: str, model_id: str = "google/vit-base-patch16-
 
         image_bytes = None
         if image_data.startswith("data:"):
-            import base64
             _, encoded = image_data.split(",", 1)
             image_bytes = base64.b64decode(encoded)
             headers["Content-Type"] = "application/octet-stream"
@@ -101,8 +101,9 @@ def predict_local(feature_vector: list[float]) -> dict:
     if not model:
         return {"error": "Local model weights not loaded"}
 
-    if len(feature_vector) != model.get("feature_dim", 12):
-        return {"error": f"Expected {model.get('feature_dim', 12)}-dim vector, got {len(feature_vector)}"}
+    expected_dim = model.get("feature_dim", 12)
+    if len(feature_vector) != expected_dim:
+        return {"error": f"Expected {expected_dim}-dim vector, got {len(feature_vector)}"}
 
     try:
         t0 = time.time()
@@ -149,22 +150,12 @@ def classify_image(image_url: str, model_id: str = "google/vit-base-patch16-224"
         }
 
     logger.info("HF API unavailable (%s), falling back to local model", hf_result.get("error"))
-    local_result = predict_local([0] * 12)
-    if "error" not in local_result:
-        return {
-            "status": "success_fallback",
-            "predictions": local_result,
-            "source": "local_sklearn",
-            "model_used": "cvd_classifier_local",
-            "latency_ms": local_result.get("latency_ms"),
-        }
-
     return {
         "status": "error",
         "predictions": {},
         "source": "none",
         "model_used": "none",
-        "error": f"HF: {hf_result.get('error')}; Local: {local_result.get('error')}",
+        "error": f"HF: {hf_result.get('error')}",
     }
 
 

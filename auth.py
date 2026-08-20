@@ -11,9 +11,9 @@ from models import UserPublic
 
 SECRET_KEY = os.getenv("VISIONADAPT_SECRET", "visionadapt-dev-secret-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_HOURS = 72
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 _users: dict[str, dict] = {}
 _users["admin@visionadapt.com"] = {
@@ -22,6 +22,8 @@ _users["admin@visionadapt.com"] = {
     "display_name": "Admin",
     "created_at": time.time(),
 }
+
+_user_profiles: dict[str, dict] = {}
 
 
 def _hash_password(password: str) -> str:
@@ -86,3 +88,14 @@ def authenticate_user(email: str, password: str) -> dict:
 
 def get_user_public(user: dict) -> dict:
     return UserPublic(email=user["email"], display_name=user["display_name"]).model_dump()
+
+
+def save_user_profile(email: str, profile: dict) -> dict:
+    import time as _time
+    profile["updated_at"] = _time.time()
+    _user_profiles[email] = profile
+    return profile
+
+
+def get_user_profile(email: str) -> dict | None:
+    return _user_profiles.get(email)

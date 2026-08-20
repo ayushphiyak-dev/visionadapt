@@ -638,6 +638,29 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
 
 <div class="toast-wrap" id="toastWrap" aria-live="polite" role="status"></div>
 
+<div class="modal-overlay" id="authModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle" style="width:min(400px,calc(100vw - 40px))">
+    <h3 id="authModalTitle">Sign in to VisionAdapt</h3>
+    <p style="margin-bottom:16px">Save your assessment results and sync your profile across devices.</p>
+    <div id="authFormLogin">
+      <div class="form-group"><label>Email</label><input type="email" id="authEmail" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="authPassword" placeholder="At least 6 characters"></div>
+      <div id="authError" style="display:none;color:var(--danger);font-size:12px;margin-bottom:12px"></div>
+      <button class="btn btn-primary" id="authSubmitBtn" style="width:100%">Sign in</button>
+      <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--text-2)">No account? <a href="#" id="authSwitchToRegister" style="color:var(--primary);font-weight:600">Create one</a></p>
+    </div>
+    <div id="authFormRegister" style="display:none">
+      <div class="form-group"><label>Email</label><input type="email" id="authRegEmail" placeholder="you@example.com"></div>
+      <div class="form-group"><label>Display name</label><input type="text" id="authRegName" placeholder="Your name"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="authRegPassword" placeholder="At least 6 characters"></div>
+      <div id="authRegError" style="display:none;color:var(--danger);font-size:12px;margin-bottom:12px"></div>
+      <button class="btn btn-primary" id="authRegBtn" style="width:100%">Create account</button>
+      <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--text-2)">Already have an account? <a href="#" id="authSwitchToLogin" style="color:var(--primary);font-weight:600">Sign in</a></p>
+    </div>
+    <div style="position:absolute;top:12px;right:12px"><button class="icon-btn" id="authCloseBtn" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="deleteModal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
     <h3 id="deleteModalTitle">Delete accessibility profile?</h3>
@@ -653,24 +676,93 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
 lucide.createIcons();
 
 /* ============================ GLOBAL STATE ============================ */
+const API_BASE = 'https://visionadapt.vercel.app';
+let authToken = localStorage.getItem('va-token') || null;
+let authUser = null;
+let backendStatus = { reachable: false, latencyMs: null, modelLoaded: false, lastCheck: 0 };
+
 const state = {
   page: 'landing',
   sidebarCollapsed: false,
   theme: 'light',
   assessment: { step: 0, answers: {}, submitting:false, complete:false, questions:null },
   profile: {
-    type: 'Deuteranomaly', severity: 62,
-    contrast: 70, outline: 3, overlay: true, pattern: true,
-    iconPref: 'Symbols', palette: 'Blue–Orange assist',
+    type: 'Not assessed', severity: 0,
+    contrast: 50, outline: 2, overlay: true, pattern: true,
+    iconPref: 'Symbols', palette: 'Default',
     modelUsed: null, modelConfidence: null, modelLatencyMs: null
   },
   settings: {
     darkMode:false, notifications:true, contrastPref:'Adaptive',
     extEnabled:true, extAutoDetect:true, extOverlay:true,
-    displayName:'Alex Morgan', email:'alex.morgan@example.com'
+    displayName:'User', email:''
   },
-  ext: { connected:true, game:'Ranked Arena', fps:144 }
+  ext: { connected:false, game:null, fps:0 }
 };
+
+/* ============================ API HELPERS ============================ */
+async function apiFetch(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  try {
+    const resp = await fetch(API_BASE + path, { ...options, headers });
+    if (resp.status === 401) { authToken = null; localStorage.removeItem('va-token'); return { _error: true, _status: 401, detail: 'Unauthorized' }; }
+    const data = await resp.json().catch(() => ({}));
+    return { _error: !resp.ok, _status: resp.status, ...data };
+  } catch (e) { return { _error: true, _status: 0, detail: e.message }; }
+}
+
+async function apiLogin(email, password) {
+  const res = await apiFetch('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+  if (!res._error && res.access_token) { authToken = res.access_token; localStorage.setItem('va-token', authToken); authUser = res.user; return true; }
+  return false;
+}
+
+async function apiRegister(email, password, displayName) {
+  const res = await apiFetch('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ email, password, display_name: displayName }) });
+  if (!res._error && res.access_token) { authToken = res.access_token; localStorage.setItem('va-token', authToken); authUser = res.user; return true; }
+  return false;
+}
+
+async function apiSaveProfile() {
+  if (!authToken) return;
+  await apiFetch('/api/v1/profile', {
+    method: 'POST',
+    body: JSON.stringify({
+      cvd_type: state.profile.type, severity: state.profile.severity,
+      contrast: state.profile.contrast, outline: state.profile.outline,
+      icon_pref: state.profile.iconPref, model_used: !!state.profile.modelUsed,
+      model_confidence: state.profile.modelConfidence, model_latency_ms: state.profile.modelLatencyMs
+    })
+  });
+}
+
+async function apiLoadProfile() {
+  if (!authToken) return;
+  const res = await apiFetch('/api/v1/profile');
+  if (!res._error && res.profile) {
+    state.profile.type = res.profile.cvd_type || state.profile.type;
+    state.profile.severity = res.profile.severity ?? state.profile.severity;
+    state.profile.contrast = res.profile.contrast ?? state.profile.contrast;
+    state.profile.outline = res.profile.outline ?? state.profile.outline;
+    state.profile.iconPref = res.profile.icon_pref || state.profile.iconPref;
+    state.profile.modelUsed = res.profile.model_used;
+    state.profile.modelConfidence = res.profile.model_confidence;
+    state.profile.modelLatencyMs = res.profile.model_latency_ms;
+  }
+}
+
+async function apiRunDiagnostics() {
+  const t0 = performance.now();
+  try {
+    const resp = await fetch(API_BASE + '/api/v1/health');
+    const latencyMs = Math.round(performance.now() - t0);
+    if (resp.ok) { const d = await resp.json(); backendStatus = { reachable: true, latencyMs, modelLoaded: d.local_model_loaded || false, lastCheck: Date.now(), data: d }; }
+    else backendStatus = { reachable: false, latencyMs, modelLoaded: false, lastCheck: Date.now() };
+  } catch (e) { backendStatus = { reachable: false, latencyMs: Math.round(performance.now() - t0), modelLoaded: false, lastCheck: Date.now() }; }
+  const el = document.getElementById('backendStatus');
+  if (el) el.textContent = backendStatus.reachable ? `Connected (${backendStatus.latencyMs}ms)` : 'Offline';
+}
 
 /* ============================ PERSISTENCE ============================ */
 // localStorage for state persistence — works everywhere (Vercel, local, etc.)
@@ -729,7 +821,8 @@ async function boot(){
   const startPage = (state.page === 'assessment' || APP_PAGES.includes(state.page)) ? state.page : 'landing';
   navigate(startPage);
   loader.classList.add('hidden');
-  runDiagnostics();
+  apiRunDiagnostics();
+  if(authToken) apiLoadProfile();
 }
 
 /* ============================ NAV / ROUTER ============================ */
@@ -1230,6 +1323,7 @@ function computeResult(){
   state.assessment.complete = true;
   renderAssessment();
   persistState();
+  apiSaveProfile();
   const source = result.modelUsed
     ? `Model classification (${Math.round(result.confidence*100)}% confidence, ${result.latencyMs.toFixed(2)}ms)`
     : 'Rule-based fallback (model unavailable)';
@@ -1684,18 +1778,18 @@ function wireAppPage(key){
     const p = state.profile;
     const cS = document.getElementById('contrastSlider'), oS = document.getElementById('outlineSlider'), sS = document.getElementById('severitySlider');
     cS.addEventListener('input', ()=>{ p.contrast=+cS.value; document.getElementById('contrastVal').textContent=p.contrast+'%'; cS.setAttribute('aria-valuetext', p.contrast+'%'); });
-    cS.addEventListener('change', persistState);
+    cS.addEventListener('change', ()=>{ persistState(); apiSaveProfile(); });
     oS.addEventListener('input', ()=>{ p.outline=+oS.value; document.getElementById('outlineVal').textContent=p.outline+'px'; oS.setAttribute('aria-valuetext', p.outline+'px'); });
-    oS.addEventListener('change', persistState);
+    oS.addEventListener('change', ()=>{ persistState(); apiSaveProfile(); });
     sS.addEventListener('input', ()=>{ p.severity=+sS.value; document.getElementById('severityVal').textContent=p.severity+'%'; sS.setAttribute('aria-valuetext', p.severity+'%'); });
-    sS.addEventListener('change', persistState);
+    sS.addEventListener('change', ()=>{ persistState(); apiSaveProfile(); });
     document.getElementById('visionTypeChips').addEventListener('click', e=>{
       const b=e.target.closest('.chip'); if(!b) return;
       p.type=b.dataset.type; document.querySelectorAll('#visionTypeChips .chip').forEach(c=>{c.classList.remove('selected'); c.setAttribute('aria-pressed','false');}); b.classList.add('selected'); b.setAttribute('aria-pressed','true');
       const map={Protanomaly:'protanopia',Protanopia:'protanopia',Deuteranomaly:'deuteranopia',Deuteranopia:'deuteranopia',Tritanomaly:'tritanopia',Tritanopia:'tritanopia'};
       document.getElementById('pvLeft').style.filter = `url(#f-${map[p.type]})`;
       document.querySelector('.demo-labels span').textContent = `Simulated (${p.type})`;
-      persistState();
+      persistState(); apiSaveProfile();
     });
     document.getElementById('iconChips').addEventListener('click', e=>{
       const b=e.target.closest('.chip'); if(!b) return;
@@ -1724,7 +1818,7 @@ function wireAppPage(key){
       const btn = document.getElementById('diagBtn');
       btn.textContent = 'Checking...';
       btn.disabled = true;
-      await runDiagnostics();
+      await apiRunDiagnostics();
       btn.textContent = 'Re-check backend';
       btn.disabled = false;
       toast(backendStatus.reachable ? 'Backend online' : 'Backend offline', backendStatus.reachable ? `API reachable in ${backendStatus.latencyMs}ms` : 'Could not reach VisionAdapt API', backendStatus.reachable ? 'success' : 'warning');
@@ -1797,39 +1891,72 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Escape') document.getElementById('deleteModal').classList.remove('open');
 });
 
-/* ============================ BACKEND DIAGNOSTICS ============================ */
-const API_BASE = 'https://visionadapt.vercel.app';
-let backendStatus = { reachable: false, latencyMs: null, modelLoaded: false, lastCheck: 0 };
-
-async function runDiagnostics(){
-  const t0 = performance.now();
-  try{
-    const resp = await fetch(API_BASE + '/api/v1/health', { method: 'GET' });
-    const latencyMs = Math.round(performance.now() - t0);
-    if(resp.ok){
-      const data = await resp.json();
-      backendStatus = { reachable: true, latencyMs, modelLoaded: data.local_model_loaded || false, lastCheck: Date.now(), data };
-      updateExtensionBadge();
-    } else {
-      backendStatus = { reachable: false, latencyMs, modelLoaded: false, lastCheck: Date.now() };
-    }
-  }catch(e){
-    const latencyMs = Math.round(performance.now() - t0);
-    backendStatus = { reachable: false, latencyMs, modelLoaded: false, lastCheck: Date.now(), error: e.message };
-  }
-  const el = document.getElementById('backendStatus');
-  if(el) el.textContent = backendStatus.reachable ? `Connected (${backendStatus.latencyMs}ms)` : 'Offline';
-}
-
 function updateExtensionBadge(){
   const dot = document.getElementById('extPulseDot');
-  if(dot){
-    dot.style.background = state.ext.connected ? 'var(--success)' : 'var(--border)';
+  if(dot) dot.style.background = state.ext.connected ? 'var(--success)' : 'var(--border)';
+}
+
+/* ============================ AUTH MODAL ============================ */
+function openAuthModal(mode){
+  const m = document.getElementById('authModal');
+  m.classList.add('open');
+  document.getElementById('authFormLogin').style.display = mode==='register'?'none':'block';
+  document.getElementById('authFormRegister').style.display = mode==='register'?'block':'none';
+  document.getElementById('authModalTitle').textContent = mode==='register'?'Create an account':'Sign in to VisionAdapt';
+  document.getElementById('authError').style.display='none';
+  document.getElementById('authRegError').style.display='none';
+}
+function closeAuthModal(){ document.getElementById('authModal').classList.remove('open'); }
+document.getElementById('authCloseBtn').addEventListener('click', closeAuthModal);
+document.getElementById('authModal').addEventListener('click', e=>{ if(e.target.id==='authModal') closeAuthModal(); });
+document.getElementById('authSwitchToRegister').addEventListener('click', e=>{ e.preventDefault(); openAuthModal('register'); });
+document.getElementById('authSwitchToLogin').addEventListener('click', e=>{ e.preventDefault(); openAuthModal('login'); });
+document.getElementById('authSubmitBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('authEmail').value.trim();
+  const pw = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authError');
+  if(!email || !pw){ errEl.textContent='Please fill in all fields'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('authSubmitBtn'); btn.textContent='Signing in...'; btn.disabled=true;
+  const ok = await apiLogin(email, pw);
+  btn.textContent='Sign in'; btn.disabled=false;
+  if(ok){ closeAuthModal(); toast('Signed in', `Welcome back, ${authUser?.display_name||email}!`, 'success'); updateAuthUI(); persistState(); }
+  else{ errEl.textContent='Incorrect email or password'; errEl.style.display='block'; }
+});
+document.getElementById('authRegBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('authRegEmail').value.trim();
+  const name = document.getElementById('authRegName').value.trim();
+  const pw = document.getElementById('authRegPassword').value;
+  const errEl = document.getElementById('authRegError');
+  if(!email || !pw){ errEl.textContent='Please fill in email and password'; errEl.style.display='block'; return; }
+  if(pw.length<6){ errEl.textContent='Password must be at least 6 characters'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('authRegBtn'); btn.textContent='Creating...'; btn.disabled=true;
+  const ok = await apiRegister(email, pw, name);
+  btn.textContent='Create account'; btn.disabled=false;
+  if(ok){ closeAuthModal(); toast('Account created', `Welcome, ${authUser?.display_name||email}!`, 'success'); updateAuthUI(); }
+  else{ errEl.textContent='Account may already exist'; errEl.style.display='block'; }
+});
+function updateAuthUI(){
+  const navCta = document.querySelector('.nav-cta');
+  const existing = document.getElementById('authNavBtn');
+  if(existing) existing.remove();
+  if(authToken){
+    const btn = document.createElement('button');
+    btn.className='btn btn-secondary btn-sm'; btn.id='authNavBtn';
+    btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg> ${authUser?.display_name||'Account'}`;
+    btn.addEventListener('click', ()=>{ authToken=null; localStorage.removeItem('va-token'); authUser=null; updateAuthUI(); toast('Signed out','You have been signed out.','info'); });
+    navCta.insertBefore(btn, navCta.firstChild);
+  } else {
+    const btn = document.createElement('button');
+    btn.className='btn btn-secondary btn-sm'; btn.id='authNavBtn'; btn.textContent='Sign in';
+    btn.addEventListener('click', ()=> openAuthModal('login'));
+    navCta.insertBefore(btn, navCta.firstChild);
   }
 }
 
 /* init */
 boot();
+updateAuthUI();
+if(authToken) apiLoadProfile().then(()=>{ persistState(); });
 </script>
 </body>
 </html>
