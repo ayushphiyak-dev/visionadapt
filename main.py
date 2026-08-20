@@ -2,6 +2,7 @@ import json
 import os
 import time
 import logging
+import asyncio
 
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +17,7 @@ from auth import (
 from models import (
     RegisterRequest, LoginRequest, PredictionRequest, PredictionResponse,
     ProfileSaveRequest, ProfileResponse, HealthResponse, DiagnosticsResponse,
-    ErrorResponse,
+    ErrorResponse, CvdPredictRequest,
 )
 from inference import classify_image, predict_local, get_local_model_info, run_diagnostics
 
@@ -101,7 +102,8 @@ async def get_me(user: dict = Depends(get_current_user)):
     responses={401: {"model": ErrorResponse}, 502: {"model": ErrorResponse}},
 )
 async def predict(data: PredictionRequest, user: dict = Depends(get_current_user)):
-    result = classify_image(data.image_url, data.model)
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, classify_image, data.image_url, data.model)
     if result["status"] == "error":
         raise HTTPException(status_code=502, detail=f"All inference backends failed: {result.get('error', 'unknown')}")
     return PredictionResponse(
@@ -115,12 +117,8 @@ async def predict(data: PredictionRequest, user: dict = Depends(get_current_user
 
 
 @app.post("/api/v1/predict/cvd", tags=["Inference"], responses={400: {"model": ErrorResponse}, 500: {"model": ErrorResponse}})
-async def predict_cvd(features: list[float], user: dict = Depends(get_current_user)):
-    if len(features) != 12:
-        raise HTTPException(status_code=400, detail=f"Expected 12-dim feature vector, got {len(features)}")
-    if not all(isinstance(f, (int, float)) for f in features):
-        raise HTTPException(status_code=400, detail="All features must be numeric")
-    result = predict_local(features)
+async def predict_cvd(data: CvdPredictRequest, user: dict = Depends(get_current_user)):
+    result = predict_local(data.features)
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
     return result

@@ -10,7 +10,19 @@
       }
     },
     {
-      "src": "**/*",
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "model_weights.json",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "metrics.json",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "extension/**",
       "use": "@vercel/static"
     }
   ],
@@ -30,14 +42,6 @@
     {
       "src": "/(.*)",
       "dest": "/index.html"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/extension/(.*)",
-      "headers": [
-        { "key": "Content-Type", "value": "application/json" }
-      ]
     }
   ]
 }

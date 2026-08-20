@@ -84,11 +84,8 @@ class ProfileResponse(BaseModel):
     updated_at: float
 
 
-class ExtensionStatusRequest(BaseModel):
-    connected: bool = False
-    game: Optional[str] = Field(None, max_length=128)
-    fps: Optional[int] = Field(None, ge=0, le=1000)
-    canvas_count: int = Field(default=0, ge=0)
+class CvdPredictRequest(BaseModel):
+    features: list[float] = Field(..., min_length=12, max_length=12, description="12-dim feature vector")
 
 
 class HealthResponse(BaseModel):
@@ -97,13 +94,6 @@ class HealthResponse(BaseModel):
     hf_api_configured: bool
     local_model_loaded: bool
     uptime_s: float
-
-
-class MetricsResponse(BaseModel):
-    axis_classifier: dict
-    severity_regressor: dict
-    inference: dict
-    dataset: dict
 
 
 class ErrorResponse(BaseModel):

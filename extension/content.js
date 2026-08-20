@@ -26,10 +26,11 @@
   let profile = null;
   let enabled = false;
   let matrix = null;
-  const activeCanvases = new Set();
+  const activeCanvases = new Map();
   let currentFps = 0;
   let frameCount = 0;
   let lastFpsTime = 0;
+  let scanInterval = null;
 
   function injectMainWorld() {
     if (document.getElementById("va-inject")) return;
@@ -180,19 +181,18 @@
     frameCount = 0;
     raf = requestAnimationFrame(frame);
 
-    activeCanvases.add(srcCanvas);
-    activeCanvases._cleanup = function() {
-      running = false;
-      if (raf) cancelAnimationFrame(raf);
-      if (off.parentElement) off.parentElement.removeChild(off);
-    };
-    activeCanvases._off = off;
+    activeCanvases.set(srcCanvas, {
+      cleanup: function() {
+        running = false;
+        if (raf) cancelAnimationFrame(raf);
+        if (off.parentElement) off.parentElement.removeChild(off);
+      }
+    });
   }
 
   function stopAllPipelines() {
-    if (activeCanvases._cleanup) activeCanvases._cleanup();
+    activeCanvases.forEach(function(entry) { entry.cleanup(); });
     activeCanvases.clear();
-    activeCanvases._cleanup = null;
   }
 
   window.addEventListener("va:canvas", function(e) {
@@ -275,14 +275,16 @@
     profile = p; enabled = true; matrix = MAT[key];
     applyDOM(p);
     injectMainWorld();
+    if (scanInterval) clearInterval(scanInterval);
     setTimeout(scanCanvases, 500);
-    setInterval(scanCanvases, 3000);
+    scanInterval = setInterval(scanCanvases, 3000);
     var game = detectGame();
     try { chrome.runtime.sendMessage({ type: "GAME_DETECTED", game: game ? game.n : null, genre: game ? game.g : null }); } catch(e) {}
   }
 
   function disable() {
     enabled = false; removeDOM();
+    if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
     stopAllPipelines();
     try { chrome.runtime.sendMessage({ type: "GAME_DETECTED", game: null, genre: null }); } catch(e) {}
   }
