@@ -60,6 +60,30 @@ class CVDProfile(BaseModel):
     outline: int = Field(default=2, ge=0, le=8)
 
 
+class ProfileSaveRequest(BaseModel):
+    cvd_type: str = Field(..., max_length=64, description="CVD type label")
+    severity: float = Field(..., ge=0, le=100, description="Severity 0-100")
+    contrast: int = Field(default=50, ge=0, le=100)
+    outline: int = Field(default=2, ge=0, le=8)
+    icon_pref: str = Field(default="Symbols", max_length=32)
+    feature_vector: Optional[list[float]] = Field(None, description="12-dim feature vector from assessment")
+    model_used: Optional[bool] = Field(default=False, description="Whether ML model was used")
+    model_confidence: Optional[float] = Field(None, description="ML model confidence")
+    model_latency_ms: Optional[float] = Field(None, description="ML inference latency")
+
+
+class ProfileResponse(BaseModel):
+    cvd_type: str
+    severity: float
+    contrast: int
+    outline: int
+    icon_pref: str
+    model_used: bool
+    model_confidence: Optional[float]
+    model_latency_ms: Optional[float]
+    updated_at: float
+
+
 class ExtensionStatusRequest(BaseModel):
     connected: bool = False
     game: Optional[str] = Field(None, max_length=128)
@@ -93,5 +117,6 @@ class DiagnosticsResponse(BaseModel):
     auth_working: bool
     inference_available: bool
     hf_api_configured: bool
+    local_model_loaded: bool
     latency_ms: float
     errors: list[str]

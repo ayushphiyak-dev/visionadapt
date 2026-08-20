@@ -7,11 +7,16 @@ from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
-from auth import create_access_token, get_current_user, register_user, authenticate_user, get_user_public
+from auth import (
+    create_access_token, get_current_user, register_user, authenticate_user,
+    get_user_public, save_user_profile, get_user_profile,
+)
 from models import (
-    RegisterRequest, PredictionRequest, PredictionResponse,
-    HealthResponse, DiagnosticsResponse, ErrorResponse,
+    RegisterRequest, LoginRequest, PredictionRequest, PredictionResponse,
+    ProfileSaveRequest, ProfileResponse, HealthResponse, DiagnosticsResponse,
+    ErrorResponse,
 )
 from inference import classify_image, predict_local, get_local_model_info, run_diagnostics
 
@@ -71,7 +76,14 @@ async def register(req: RegisterRequest):
 
 
 @app.post("/api/v1/auth/login", tags=["Auth"], responses={401: {"model": ErrorResponse}})
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(req: LoginRequest):
+    user = authenticate_user(req.email, req.password)
+    token = create_access_token(user["email"])
+    return {"access_token": token, "token_type": "bearer", "user": get_user_public(user)}
+
+
+@app.post("/api/v1/auth/login/form", tags=["Auth"], responses={401: {"model": ErrorResponse}})
+async def login_form(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     token = create_access_token(user["email"])
     return {"access_token": token, "token_type": "bearer", "user": get_user_public(user)}
@@ -114,14 +126,18 @@ async def predict_cvd(features: list[float], user: dict = Depends(get_current_us
     return result
 
 
-@app.get("/api/v1/metrics", tags=["Model"], responses={404: {"model": ErrorResponse}})
-async def get_metrics():
-    metrics_path = os.path.join(os.path.dirname(__file__), "metrics.json")
-    try:
-        with open(metrics_path) as f:
-            return json.load(f)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="metrics.json not found — run train.py first")
+@app.post("/api/v1/profile", tags=["Profile"], responses={401: {"model": ErrorResponse}})
+async def save_profile(data: ProfileSaveRequest, user: dict = Depends(get_current_user)):
+    profile = save_user_profile(user["email"], data.model_dump())
+    return {"status": "saved", "profile": profile}
+
+
+@app.get("/api/v1/profile", tags=["Profile"], responses={401: {"model": ErrorResponse}})
+async def get_profile(user: dict = Depends(get_current_user)):
+    profile = get_user_profile(user["email"])
+    if not profile:
+        return {"status": "not_found", "profile": None}
+    return {"status": "ok", "profile": profile}
 
 
 @app.get("/api/v1/model/info", tags=["Model"])
