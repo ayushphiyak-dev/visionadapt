@@ -733,26 +733,32 @@ function clearAuth() {
 
 async function apiSaveProfile() {
   if (!authToken) return;
-  await apiFetch('/api/v1/profile', {
-    method: 'POST',
-    body: JSON.stringify({
-      cvd_type: state.profile.type, severity: state.profile.severity,
-      contrast: state.profile.contrast, outline: state.profile.outline,
-      icon_pref: state.profile.iconPref, model_used: !!state.profile.modelUsed,
-      model_confidence: state.profile.modelConfidence, model_latency_ms: state.profile.modelLatencyMs
-    })
-  });
+  try {
+    var res = await apiFetch('/api/v1/profile', {
+      method: 'POST',
+      body: JSON.stringify({
+        cvd_type: state.profile.type, severity: state.profile.severity,
+        contrast: state.profile.contrast, outline: state.profile.outline,
+        icon_pref: state.profile.iconPref, model_used: !!state.profile.modelUsed,
+        model_confidence: state.profile.modelConfidence, model_latency_ms: state.profile.modelLatencyMs
+      })
+    });
+    if (res && res._error) console.warn('Profile save failed:', res);
+  } catch(e) { console.warn('Profile save error:', e); }
 }
 
 function syncProfileToExtension() {
-  try {
-    window.postMessage({
-      type: 'VA_SYNC_PROFILE',
-      profile: { type: state.profile.type, severity: state.profile.severity,
-        contrast: state.profile.contrast, outline: state.profile.outline,
-        iconPref: state.profile.iconPref, pattern: true }
-    }, '*');
-  } catch(e) {}
+  var profile = { type: state.profile.type, severity: state.profile.severity,
+    contrast: state.profile.contrast, outline: state.profile.outline,
+    iconPref: state.profile.iconPref, pattern: true };
+  try { window.postMessage({ type: 'VA_SYNC_PROFILE', profile: profile }, '*'); } catch(e) {}
+  try { window.postMessage({ type: 'VA_SAVE_PROFILE', profile: profile }, '*'); } catch(e) {}
+  setTimeout(function() {
+    try {
+      window.postMessage({ type: 'VA_SYNC_PROFILE', profile: profile }, '*');
+      window.postMessage({ type: 'VA_SAVE_PROFILE', profile: profile }, '*');
+    } catch(e) {}
+  }, 1500);
 }
 window.addEventListener('message', function(e) {
   if (e.data && e.data.type === 'VA_EXTENSION_READY') {
