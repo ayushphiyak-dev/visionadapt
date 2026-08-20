@@ -350,7 +350,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;heigh
 .modal-overlay.open{display:flex;animation:fadeUp .2s var(--ease)}
 .modal-overlay.open .modal{animation:modalIn .2s var(--ease)}
 @keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
-.modal{background:var(--surface);border-radius:var(--radius-lg);padding:26px;width:min(380px,calc(100vw - 40px));box-shadow:var(--shadow-lg);border:1px solid var(--border)}
+.modal{background:var(--surface);border-radius:var(--radius-lg);padding:26px;width:min(380px,calc(100vw - 40px));box-shadow:var(--shadow-lg);border:1px solid var(--border);position:relative}
 .modal h3{font-size:17px;font-weight:700;margin-bottom:8px}
 .modal p{font-size:13.5px;color:var(--text-2);line-height:1.55;margin-bottom:20px}
 .modal .row{display:flex;gap:10px;justify-content:flex-end}
@@ -640,24 +640,28 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
 
 <div class="modal-overlay" id="authModal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle" style="width:min(400px,calc(100vw - 40px))">
-    <h3 id="authModalTitle">Sign in to VisionAdapt</h3>
-    <p style="margin-bottom:16px">Save your assessment results and sync your profile across devices.</p>
+    <button class="icon-btn" id="authCloseBtn" aria-label="Close" style="position:absolute;top:12px;right:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h3 id="authModalTitle" style="padding-right:24px">Sign in to VisionAdapt</h3>
+    <p style="margin-bottom:16px">Save your assessment results and sync your profile to the extension.</p>
     <div id="authFormLogin">
-      <div class="form-group"><label>Email</label><input type="email" id="authEmail" placeholder="you@example.com"></div>
-      <div class="form-group"><label>Password</label><input type="password" id="authPassword" placeholder="At least 6 characters"></div>
-      <div id="authError" style="display:none;color:var(--danger);font-size:12px;margin-bottom:12px"></div>
-      <button class="btn btn-primary" id="authSubmitBtn" style="width:100%">Sign in</button>
+      <form id="loginFormEl" autocomplete="on">
+        <div class="form-group"><label>Email</label><input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" required></div>
+        <div class="form-group"><label>Password</label><input type="password" id="authPassword" placeholder="At least 6 characters" autocomplete="current-password" required></div>
+        <div id="authError" style="display:none;color:var(--danger);font-size:12px;margin-bottom:12px"></div>
+        <button type="submit" class="btn btn-primary" id="authSubmitBtn" style="width:100%">Sign in</button>
+      </form>
       <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--text-2)">No account? <a href="#" id="authSwitchToRegister" style="color:var(--primary);font-weight:600">Create one</a></p>
     </div>
     <div id="authFormRegister" style="display:none">
-      <div class="form-group"><label>Email</label><input type="email" id="authRegEmail" placeholder="you@example.com"></div>
-      <div class="form-group"><label>Display name</label><input type="text" id="authRegName" placeholder="Your name"></div>
-      <div class="form-group"><label>Password</label><input type="password" id="authRegPassword" placeholder="At least 6 characters"></div>
-      <div id="authRegError" style="display:none;color:var(--danger);font-size:12px;margin-bottom:12px"></div>
-      <button class="btn btn-primary" id="authRegBtn" style="width:100%">Create account</button>
+      <form id="registerFormEl" autocomplete="on">
+        <div class="form-group"><label>Email</label><input type="email" id="authRegEmail" placeholder="you@example.com" autocomplete="email" required></div>
+        <div class="form-group"><label>Display name</label><input type="text" id="authRegName" placeholder="Your name" autocomplete="name"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="authRegPassword" placeholder="At least 6 characters" autocomplete="new-password" required></div>
+        <div id="authRegError" style="display:none;color:var(--danger);font-size:12px;margin-bottom:12px"></div>
+        <button type="submit" class="btn btn-primary" id="authRegBtn" style="width:100%">Create account</button>
+      </form>
       <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--text-2)">Already have an account? <a href="#" id="authSwitchToLogin" style="color:var(--primary);font-weight:600">Sign in</a></p>
     </div>
-    <div style="position:absolute;top:12px;right:12px"><button class="icon-btn" id="authCloseBtn" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   </div>
 </div>
 
@@ -1150,7 +1154,10 @@ function renderAssessment(){
   });
   document.getElementById('prevBtn').addEventListener('click', ()=>{ state.assessment.step--; renderAssessment(); persistState(); });
   document.getElementById('exitAssessBtn').addEventListener('click', ()=>{ navigate('landing'); });
-  document.addEventListener('keydown', assessKeyNav);
+  if(!window._assessKeyListenerAdded){
+    document.addEventListener('keydown', assessKeyNav);
+    window._assessKeyListenerAdded = true;
+  }
   lucide.createIcons();
 }
 function assessKeyNav(e){
@@ -1342,7 +1349,7 @@ function computeResult(){
   apiSaveProfile();
   syncProfileToExtension();
   const source = result.modelUsed
-    ? `Model classification (${Math.round(result.confidence*100)}% confidence, ${result.latencyMs.toFixed(2)}ms)`
+    ? `Model classification (${Math.round(result.confidence*100)}% confidence, ${result.latencyMs ? result.latencyMs.toFixed(2) : '?'}ms)`
     : 'Rule-based fallback (model unavailable)';
   toast('Profile generated', `${result.type}, ${result.severity}% severity — ${source}`, 'success');
 }
@@ -1897,7 +1904,7 @@ document.getElementById('deleteModal').addEventListener('click', e=>{
 document.getElementById('cancelDelete').addEventListener('click', ()=> document.getElementById('deleteModal').classList.remove('open'));
 document.getElementById('confirmDelete').addEventListener('click', ()=>{
   document.getElementById('deleteModal').classList.remove('open');
-  state.profile = {type:'Not assessed', severity:0, contrast:50, outline:2, overlay:true, pattern:true, iconPref:'Symbols', palette:'Default'};
+  state.profile = {type:'Not assessed', severity:0, contrast:50, outline:2, overlay:true, pattern:true, iconPref:'Symbols', palette:'Default', modelUsed:null, modelConfidence:null, modelLatencyMs:null};
   state.assessment = {step:0, answers:{}, submitting:false, complete:false, questions:null};
   toast('Profile deleted','Your accessibility profile has been removed.','danger');
   navigate('dashboard');
@@ -1905,7 +1912,10 @@ document.getElementById('confirmDelete').addEventListener('click', ()=>{
 
 /* ---------- global escape-to-close for modal ---------- */
 document.addEventListener('keydown', e=>{
-  if(e.key==='Escape') document.getElementById('deleteModal').classList.remove('open');
+  if(e.key==='Escape'){
+    document.getElementById('deleteModal').classList.remove('open');
+    closeAuthModal();
+  }
 });
 
 function updateExtensionBadge(){
@@ -1922,13 +1932,16 @@ function openAuthModal(mode){
   document.getElementById('authModalTitle').textContent = mode==='register'?'Create an account':'Sign in to VisionAdapt';
   document.getElementById('authError').style.display='none';
   document.getElementById('authRegError').style.display='none';
+  setTimeout(()=>{ (mode==='register'?document.getElementById('authRegEmail'):document.getElementById('authEmail')).focus(); }, 100);
 }
 function closeAuthModal(){ document.getElementById('authModal').classList.remove('open'); }
 document.getElementById('authCloseBtn').addEventListener('click', closeAuthModal);
 document.getElementById('authModal').addEventListener('click', e=>{ if(e.target.id==='authModal') closeAuthModal(); });
 document.getElementById('authSwitchToRegister').addEventListener('click', e=>{ e.preventDefault(); openAuthModal('register'); });
 document.getElementById('authSwitchToLogin').addEventListener('click', e=>{ e.preventDefault(); openAuthModal('login'); });
-document.getElementById('authSubmitBtn').addEventListener('click', async ()=>{
+
+document.getElementById('loginFormEl').addEventListener('submit', async (e)=>{
+  e.preventDefault();
   const email = document.getElementById('authEmail').value.trim();
   const pw = document.getElementById('authPassword').value;
   const errEl = document.getElementById('authError');
@@ -1937,9 +1950,11 @@ document.getElementById('authSubmitBtn').addEventListener('click', async ()=>{
   const ok = await apiLogin(email, pw);
   btn.textContent='Sign in'; btn.disabled=false;
   if(ok){ closeAuthModal(); toast('Signed in', `Welcome back, ${authUser?.display_name||email}!`, 'success'); updateAuthUI(); persistState(); }
-  else{ errEl.textContent='Incorrect email or password'; errEl.style.display='block'; }
+  else{ errEl.textContent='Incorrect email or password. Please try again.'; errEl.style.display='block'; }
 });
-document.getElementById('authRegBtn').addEventListener('click', async ()=>{
+
+document.getElementById('registerFormEl').addEventListener('submit', async (e)=>{
+  e.preventDefault();
   const email = document.getElementById('authRegEmail').value.trim();
   const name = document.getElementById('authRegName').value.trim();
   const pw = document.getElementById('authRegPassword').value;
@@ -1949,9 +1964,10 @@ document.getElementById('authRegBtn').addEventListener('click', async ()=>{
   const btn = document.getElementById('authRegBtn'); btn.textContent='Creating...'; btn.disabled=true;
   const ok = await apiRegister(email, pw, name);
   btn.textContent='Create account'; btn.disabled=false;
-  if(ok){ closeAuthModal(); toast('Account created', `Welcome, ${authUser?.display_name||email}!`, 'success'); updateAuthUI(); }
-  else{ errEl.textContent='Account may already exist'; errEl.style.display='block'; }
+  if(ok){ closeAuthModal(); toast('Account created', `Welcome, ${authUser?.display_name||email}!`, 'success'); updateAuthUI(); persistState(); }
+  else{ errEl.textContent='An account with this email already exists'; errEl.style.display='block'; }
 });
+
 function updateAuthUI(){
   const navCta = document.querySelector('.nav-cta');
   const existing = document.getElementById('authNavBtn');
@@ -1960,7 +1976,7 @@ function updateAuthUI(){
     const btn = document.createElement('button');
     btn.className='btn btn-secondary btn-sm'; btn.id='authNavBtn';
     btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg> ${authUser?.display_name||'Account'}`;
-    btn.addEventListener('click', ()=>{ authToken=null; localStorage.removeItem('va-token'); authUser=null; updateAuthUI(); toast('Signed out','You have been signed out.','info'); });
+    btn.addEventListener('click', ()=>{ authToken=null; localStorage.removeItem('va-token'); authUser=null; updateAuthUI(); toast('Signed out','You have been signed out.','info'); persistState(); });
     navCta.insertBefore(btn, navCta.firstChild);
   } else {
     const btn = document.createElement('button');
