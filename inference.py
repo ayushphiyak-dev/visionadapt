@@ -51,7 +51,7 @@ def _forward_pass(weights: dict, features: list[float], output_activation: str =
 
 def query_huggingface(image_data: str, model_id: str = "google/vit-base-patch16-224") -> dict:
     if not HF_API_KEY:
-        return {"error": "HF_API_KEY not configured", "latency_ms": 0}
+        return {"error": "HF_API_KEY not configured. The assessment uses client-side ML — this endpoint is for image classification demos only.", "latency_ms": 0}
 
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
     api_url = HF_API_URL.format(model_id=model_id)
@@ -72,8 +72,10 @@ def query_huggingface(image_data: str, model_id: str = "google/vit-base-patch16-
             ct = img_resp.headers.get("Content-Type", "image/png")
             headers["Content-Type"] = ct
         else:
-            image_bytes = base64.b64decode(image_data)
-            headers["Content-Type"] = "application/octet-stream"
+            return {
+                "error": "Invalid image input. Provide a URL (https://...) or base64 data URI (data:image/...;base64,...).",
+                "latency_ms": 0,
+            }
 
         resp = requests.post(api_url, headers=headers, data=image_bytes, timeout=15)
         latency_ms = (time.time() - t0) * 1000
@@ -86,7 +88,7 @@ def query_huggingface(image_data: str, model_id: str = "google/vit-base-patch16-
             return {"error": "Rate limited by HuggingFace API", "latency_ms": round(latency_ms, 2)}
         else:
             logger.warning("HF API returned %d: %s", resp.status_code, resp.text[:200])
-            return {"error": f"HF API status {resp.status_code}", "latency_ms": round(latency_ms, 2)}
+            return {"error": f"HF API returned status {resp.status_code}: {resp.text[:120]}", "latency_ms": round(latency_ms, 2)}
     except requests.Timeout:
         return {"error": "HuggingFace API request timed out (15s)", "latency_ms": 15000}
     except requests.ConnectionError:
