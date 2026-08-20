@@ -165,6 +165,50 @@ async def health():
     )
 
 
+@app.post("/api/signup", tags=["Compat"])
+async def api_signup(req: RegisterRequest):
+    user = register_user(req.email, req.password, req.display_name)
+    token = create_access_token(req.email)
+    return {"access_token": token, "token_type": "bearer", "user": user}
+
+
+@app.post("/api/login", tags=["Compat"])
+async def api_login(req: LoginRequest):
+    user = authenticate_user(req.email, req.password)
+    token = create_access_token(user["email"])
+    return {"access_token": token, "token_type": "bearer", "user": get_user_public(user)}
+
+
+@app.get("/api/sync", tags=["Compat"])
+async def api_sync_get(user: dict = Depends(get_current_user)):
+    profile = get_user_profile(user["email"])
+    if not profile:
+        return {"status": "not_found", "profile": None}
+    return {"status": "ok", "profile": profile}
+
+
+@app.post("/api/sync", tags=["Compat"])
+async def api_sync_post(data: ProfileSaveRequest, user: dict = Depends(get_current_user)):
+    profile = save_user_profile(user["email"], data.model_dump())
+    return {"status": "saved", "profile": profile}
+
+
+@app.post("/api/analyze", tags=["Compat"])
+async def api_analyze(data: PredictionRequest, user: dict = Depends(get_current_user)):
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, classify_image, data.image_url, data.model)
+    if result["status"] == "error":
+        raise HTTPException(status_code=502, detail=f"All inference backends failed: {result.get('error', 'unknown')}")
+    return {
+        "status": result["status"],
+        "authenticated_user": user["email"],
+        "predictions": result["predictions"],
+        "source": result["source"],
+        "model_used": result["model_used"],
+        "latency_ms": result.get("latency_ms"),
+    }
+
+
 @app.get("/", tags=["System"])
 async def root():
     return {"name": "VisionAdapt API", "version": "1.0.0", "docs": "/docs", "health": "/api/v1/health"}

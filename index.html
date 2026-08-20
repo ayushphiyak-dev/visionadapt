@@ -2020,6 +2020,7 @@ function updateAuthUI(){
     navCta.insertBefore(wrap, mobileBtn);
     document.getElementById('authDropdownSignOut')?.addEventListener('click', (e)=>{
       e.preventDefault();
+      if (!confirm('Are you sure you want to sign out?')) return;
       clearAuth();
       updateAuthUI(); toast('Signed out','You have been signed out.','info'); persistState();
     });

@@ -174,6 +174,25 @@
         });
         return true;
 
+      case "SYNC_CREDENTIALS":
+        if (msg.email && msg.password) {
+          registerAndSync(msg.email, msg.password, msg.displayName).then(function(r) {
+            if (r.error) { sendResponse({ ok: false, error: r.error }); }
+            else { sendResponse({ ok: true, profile: r.profile }); }
+          });
+        } else {
+          sendResponse({ ok: false, error: "Missing email or password" });
+        }
+        return true;
+
+      case "CHECK_STATUS":
+        storage.get(["enabled", "profile", "authToken"], function(d) {
+          var isAuthed = !!(d && d.authToken);
+          var profileType = d && d.profile ? d.profile.type : "Not assessed";
+          sendResponse({ ok: true, enabled: d && d.enabled, authenticated: isAuthed, profileType: profileType });
+        });
+        return true;
+
       case "WEBSITE_SYNC":
         if (msg.profile) {
           storage.set({ profile: msg.profile, enabled: true }, function() {
@@ -187,7 +206,7 @@
         break;
 
       default:
-        sendResponse({ error: "unknown" });
+        sendResponse({ error: "unknown message type" });
     }
   });
 
