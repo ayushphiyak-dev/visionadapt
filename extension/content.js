@@ -321,4 +321,16 @@
       if (enabled && profile) setTimeout(function() { scanCanvases(); }, 1500);
     }
   }).observe(document, { subtree: true, childList: true });
+
+  if (location.hostname.indexOf("visionadapt.vercel.app") !== -1 || location.hostname === "localhost") {
+    window.addEventListener("message", function(e) {
+      if (e.source !== window) return;
+      if (e.data && e.data.type === "VA_SYNC_PROFILE" && e.data.profile) {
+        chrome.runtime.sendMessage({ type: "WEBSITE_SYNC", profile: e.data.profile }, function(r) {
+          window.postMessage({ type: "VA_SYNC_RESULT", result: r }, "*");
+        });
+      }
+    });
+    window.postMessage({ type: "VA_EXTENSION_READY" }, "*");
+  }
 })();

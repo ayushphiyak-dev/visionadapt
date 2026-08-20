@@ -16,6 +16,7 @@
     .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .2s}
     .dot.on{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.4)}
     .dot.off{background:#52525b}
+    .dot.live{background:#3b82f6;box-shadow:0 0 8px rgba(59,130,246,.4)}
     .st-t{font-weight:600;font-size:12.5px}
     .st-s{font-size:11px;color:#71717a}
     .game{display:none;align-items:center;gap:10px;padding:10px 16px;background:rgba(59,130,246,.06);border-bottom:1px solid #27272a}
@@ -51,6 +52,9 @@
     .btn-p:hover{background:#e5e5e5}
     .btn-s{background:#111;color:#fafafa;border:1px solid #27272a}
     .btn-s:hover{border-color:#52525b}
+    .btn-sync{background:linear-gradient(135deg,#3b82f6,#14b8a6);color:#fff;border:none}
+    .btn-sync:hover{opacity:.9}
+    .btn-sync:disabled{opacity:.5;cursor:not-allowed}
     .ftr{padding:10px 16px;border-top:1px solid #27272a;font-size:11px;color:#52525b;text-align:center}
     .ftr a{color:#3b82f6;text-decoration:none}
     .diag{margin-top:8px;padding:8px 10px;background:#0a0a0a;border:1px solid #27272a;border-radius:7px}
@@ -60,6 +64,13 @@
     .diag .d-fail{color:#ef4444;font-weight:600}
     .btn-diag{margin-top:6px;padding:6px 10px;border-radius:6px;border:1px solid #27272a;background:transparent;color:#71717a;font-size:11px;cursor:pointer;width:100%;font-weight:600;transition:.15s}
     .btn-diag:hover{border-color:#3b82f6;color:#3b82f6}
+    .sync-box{background:#0a0a0a;border:1px solid #27272a;border-radius:10px;padding:10px;margin-top:6px}
+    .sync-box input{width:100%;padding:7px 10px;border-radius:6px;border:1px solid #27272a;background:#111;color:#fafafa;font-size:12px;margin-bottom:6px;outline:none}
+    .sync-box input:focus{border-color:#3b82f6}
+    .sync-msg{font-size:11px;margin-top:4px}
+    .sync-msg.ok{color:#22c55e}
+    .sync-msg.err{color:#ef4444}
+    .sync-msg.info{color:#71717a}
   </style>
 </head>
 <body>
@@ -83,11 +94,11 @@
     <div class="row"><span class="lbl">Outline overlays</span><button class="tog on" id="tOv"></button></div>
     <div class="canvas-info" id="cInfo">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M2 8h20M8 2v20"/></svg>
-      <span id="cCount">0</span> canvas(es) — shader active
+      <span id="cCount">0</span> canvas(es) + shader active
     </div>
     <div class="metrics-row" id="mRow" style="display:none">
-      <div class="metric" id="mFps"><div class="mv">—</div><div class="ml">FPS</div></div>
-      <div class="metric" id="mLat"><div class="mv">—</div><div class="ml">Latency</div></div>
+      <div class="metric" id="mFps"><div class="mv">--</div><div class="ml">FPS</div></div>
+      <div class="metric" id="mLat"><div class="mv">--</div><div class="ml">Latency</div></div>
       <div class="metric" id="mPipe"><div class="mv">0</div><div class="ml">Pipelines</div></div>
     </div>
   </div>
@@ -95,8 +106,17 @@
     <div class="sec-t">Your Profile</div>
     <div class="p-card">
       <div class="p-row"><span class="k">Type</span><span class="v" id="pType">Not assessed</span></div>
-      <div class="p-row"><span class="k">Severity</span><span class="v" id="pSev">—</span></div>
+      <div class="p-row"><span class="k">Severity</span><span class="v" id="pSev">--</span></div>
       <div class="p-row"><span class="k">Contrast</span><span class="v" id="pCon">50%</span></div>
+    </div>
+  </div>
+  <div class="sec" style="padding-top:0">
+    <div class="sec-t">Sync Profile from Website</div>
+    <div class="sync-box">
+      <input type="email" placeholder="Email (same as website)" id="syncEmail">
+      <input type="password" placeholder="Password (same as website)" id="syncPass">
+      <button class="btn btn-sync" id="bSync">Sync Profile</button>
+      <div class="sync-msg" id="syncMsg"></div>
     </div>
   </div>
   <div class="sec" style="padding-top:0">
@@ -106,10 +126,10 @@
   <div class="sec" style="padding-top:0">
     <div class="sec-t">Diagnostics</div>
     <div class="diag" id="diagBox" style="display:none">
-      <div class="d-row"><span class="dk">Backend</span><span id="dBk">—</span></div>
-      <div class="d-row"><span class="dk">Extension</span><span id="dEx">—</span></div>
-      <div class="d-row"><span class="dk">Backend latency</span><span id="dBkLat">—</span></div>
-      <div class="d-row"><span class="dk">Extension latency</span><span id="dExLat">—</span></div>
+      <div class="d-row"><span class="dk">Backend</span><span id="dBk">--</span></div>
+      <div class="d-row"><span class="dk">Extension</span><span id="dEx">--</span></div>
+      <div class="d-row"><span class="dk">Backend latency</span><span id="dBkLat">--</span></div>
+      <div class="d-row"><span class="dk">Extension latency</span><span id="dExLat">--</span></div>
     </div>
     <button class="btn-diag" id="bDiag">Run Self-Diagnostic</button>
   </div>
