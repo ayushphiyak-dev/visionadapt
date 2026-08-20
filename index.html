@@ -448,8 +448,6 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
     </div>
     <div class="nav-cta">
       <button class="icon-btn" id="themeToggle" aria-label="Toggle dark mode"><svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg></button>
-      <a class="btn btn-secondary btn-sm" id="navAssessBtn" data-nav="assessment" href="#assessment">Take assessment</a>
-      <a class="btn btn-primary btn-sm" data-nav="dashboard" href="#dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg><span class="dash-btn-label">Open dashboard</span></a>
       <button class="icon-btn" id="mobileMenuBtn" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
   </div>
@@ -710,7 +708,10 @@ async function apiFetch(path, options = {}) {
   if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
   try {
     const resp = await fetch(API_BASE + path, { ...options, headers });
-    if (resp.status === 401) { authToken = null; localStorage.removeItem('va-token'); return { _error: true, _status: 401, detail: 'Unauthorized' }; }
+    if (resp.status === 401) {
+      if (path.includes('/auth/')) { authToken = null; localStorage.removeItem('va-token'); }
+      return { _error: true, _status: 401, detail: 'Unauthorized' };
+    }
     const data = await resp.json().catch(() => ({}));
     return { _error: !resp.ok, _status: resp.status, ...data };
   } catch (e) { return { _error: true, _status: 0, detail: e.message }; }
@@ -758,7 +759,7 @@ window.addEventListener('message', function(e) {
 });
 
 async function apiLoadProfile() {
-  if (!authToken) return;
+  if (!authToken) return false;
   const res = await apiFetch('/api/v1/profile');
   if (!res._error && res.profile) {
     state.profile.type = res.profile.cvd_type || state.profile.type;
@@ -769,7 +770,14 @@ async function apiLoadProfile() {
     state.profile.modelUsed = res.profile.model_used;
     state.profile.modelConfidence = res.profile.model_confidence;
     state.profile.modelLatencyMs = res.profile.model_latency_ms;
+    return true;
   }
+  if (res._status === 401) {
+    authToken = null;
+    authUser = null;
+    localStorage.removeItem('va-token');
+  }
+  return false;
 }
 
 async function apiRunDiagnostics() {
@@ -842,7 +850,8 @@ async function boot(){
   navigate(startPage);
   loader.classList.add('hidden');
   apiRunDiagnostics();
-  if(authToken) apiLoadProfile();
+  if(authToken) { await apiLoadProfile(); persistState(); }
+  updateAuthUI();
 }
 
 /* ============================ NAV / ROUTER ============================ */
@@ -1937,6 +1946,7 @@ function openAuthModal(mode){
 function closeAuthModal(){ document.getElementById('authModal').classList.remove('open'); }
 document.getElementById('authCloseBtn').addEventListener('click', closeAuthModal);
 document.getElementById('authModal').addEventListener('click', e=>{ if(e.target.id==='authModal') closeAuthModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeAuthModal(); document.getElementById('deleteModal').classList.remove('open'); } });
 document.getElementById('authSwitchToRegister').addEventListener('click', e=>{ e.preventDefault(); openAuthModal('register'); });
 document.getElementById('authSwitchToLogin').addEventListener('click', e=>{ e.preventDefault(); openAuthModal('login'); });
 
@@ -1947,9 +1957,10 @@ document.getElementById('loginFormEl').addEventListener('submit', async (e)=>{
   const errEl = document.getElementById('authError');
   if(!email || !pw){ errEl.textContent='Please fill in all fields'; errEl.style.display='block'; return; }
   const btn = document.getElementById('authSubmitBtn'); btn.textContent='Signing in...'; btn.disabled=true;
+  errEl.style.display='none';
   const ok = await apiLogin(email, pw);
   btn.textContent='Sign in'; btn.disabled=false;
-  if(ok){ closeAuthModal(); toast('Signed in', `Welcome back, ${authUser?.display_name||email}!`, 'success'); updateAuthUI(); persistState(); }
+  if(ok){ closeAuthModal(); persistState(); await apiLoadProfile(); updateAuthUI(); toast('Signed in', `Welcome back, ${authUser?.display_name||email}!`, 'success'); persistState(); }
   else{ errEl.textContent='Incorrect email or password. Please try again.'; errEl.style.display='block'; }
 });
 
@@ -1962,9 +1973,10 @@ document.getElementById('registerFormEl').addEventListener('submit', async (e)=>
   if(!email || !pw){ errEl.textContent='Please fill in email and password'; errEl.style.display='block'; return; }
   if(pw.length<6){ errEl.textContent='Password must be at least 6 characters'; errEl.style.display='block'; return; }
   const btn = document.getElementById('authRegBtn'); btn.textContent='Creating...'; btn.disabled=true;
+  errEl.style.display='none';
   const ok = await apiRegister(email, pw, name);
   btn.textContent='Create account'; btn.disabled=false;
-  if(ok){ closeAuthModal(); toast('Account created', `Welcome, ${authUser?.display_name||email}!`, 'success'); updateAuthUI(); persistState(); }
+  if(ok){ closeAuthModal(); persistState(); updateAuthUI(); toast('Account created', `Welcome, ${authUser?.display_name||email}!`, 'success'); persistState(); }
   else{ errEl.textContent='An account with this email already exists'; errEl.style.display='block'; }
 });
 
@@ -1972,24 +1984,25 @@ function updateAuthUI(){
   const navCta = document.querySelector('.nav-cta');
   const existing = document.getElementById('authNavBtn');
   if(existing) existing.remove();
+  const mobileBtn = document.getElementById('mobileMenuBtn');
   if(authToken){
     const btn = document.createElement('button');
     btn.className='btn btn-secondary btn-sm'; btn.id='authNavBtn';
     btn.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg> ${authUser?.display_name||'Account'}`;
     btn.addEventListener('click', ()=>{ authToken=null; localStorage.removeItem('va-token'); authUser=null; updateAuthUI(); toast('Signed out','You have been signed out.','info'); persistState(); });
-    navCta.insertBefore(btn, navCta.firstChild);
+    navCta.insertBefore(btn, mobileBtn);
   } else {
     const btn = document.createElement('button');
-    btn.className='btn btn-secondary btn-sm'; btn.id='authNavBtn'; btn.textContent='Sign in';
+    btn.className='btn btn-primary btn-sm'; btn.id='authNavBtn'; btn.textContent='Sign in';
     btn.addEventListener('click', ()=> openAuthModal('login'));
-    navCta.insertBefore(btn, navCta.firstChild);
+    navCta.insertBefore(btn, mobileBtn);
   }
 }
 
 /* init */
-boot();
-updateAuthUI();
-if(authToken) apiLoadProfile().then(()=>{ persistState(); });
+(async function initApp() {
+  await boot();
+})();
 </script>
 </body>
 </html>
