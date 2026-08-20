@@ -53,12 +53,29 @@ def query_huggingface(image_data: str, model_id: str = "google/vit-base-patch16-
         return {"error": "HF_API_KEY not configured", "latency_ms": 0}
 
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-    payload = {"inputs": image_data}
-    url = HF_API_URL.format(model_id=model_id)
+    api_url = HF_API_URL.format(model_id=model_id)
 
     try:
         t0 = time.time()
-        resp = requests.post(url, headers=headers, json=payload, timeout=15)
+
+        image_bytes = None
+        if image_data.startswith("data:"):
+            import base64
+            _, encoded = image_data.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            headers["Content-Type"] = "application/octet-stream"
+        elif image_data.startswith("http://") or image_data.startswith("https://"):
+            img_resp = requests.get(image_data, timeout=10)
+            if img_resp.status_code != 200:
+                return {"error": f"Failed to download image: HTTP {img_resp.status_code}", "latency_ms": 0}
+            image_bytes = img_resp.content
+            ct = img_resp.headers.get("Content-Type", "image/png")
+            headers["Content-Type"] = ct
+        else:
+            image_bytes = base64.b64decode(image_data)
+            headers["Content-Type"] = "application/octet-stream"
+
+        resp = requests.post(api_url, headers=headers, data=image_bytes, timeout=15)
         latency_ms = (time.time() - t0) * 1000
 
         if resp.status_code == 200:

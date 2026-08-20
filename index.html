@@ -673,20 +673,14 @@ const state = {
 };
 
 /* ============================ PERSISTENCE ============================ */
-// Uses the artifact's persistent key-value storage (not localStorage, which
-// isn't reliable in this environment) so profile, settings and assessment
-// progress survive a refresh. Falls back to in-memory-only behavior if the
-// storage API isn't available in the current context — the app still works,
-// it just won't remember anything between reloads.
+// localStorage for state persistence — works everywhere (Vercel, local, etc.)
 const STORAGE_KEY = 'visionadapt-app-state';
-const hasStorage = typeof window !== 'undefined' && !!window.storage;
 
-async function loadPersistedState(){
-  if(!hasStorage) return false;
+function loadPersistedState(){
   try{
-    const result = await window.storage.get(STORAGE_KEY, false);
-    if(!result || !result.value) return false;
-    const saved = JSON.parse(result.value);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    const saved = JSON.parse(raw);
     if(saved.profile) Object.assign(state.profile, saved.profile);
     if(saved.settings) Object.assign(state.settings, saved.settings);
     if(saved.assessment) Object.assign(state.assessment, saved.assessment);
@@ -695,15 +689,14 @@ async function loadPersistedState(){
     if(typeof saved.page === 'string') state.page = saved.page;
     return true;
   }catch(e){
-    return false; // no saved state yet — defaults stand
+    return false;
   }
 }
 
 let saveTimer = null;
 function persistState(){
-  if(!hasStorage) return;
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(async ()=>{
+  saveTimer = setTimeout(()=>{
     try{
       const payload = JSON.stringify({
         profile: state.profile,
@@ -713,8 +706,8 @@ function persistState(){
         sidebarCollapsed: state.sidebarCollapsed,
         page: state.page
       });
-      const result = await window.storage.set(STORAGE_KEY, payload, false);
-      if(result) showSavedIndicator();
+      localStorage.setItem(STORAGE_KEY, payload);
+      showSavedIndicator();
     }catch(e){
       toast('Could not save', 'Your changes may not persist after refresh.', 'danger');
     }
@@ -731,11 +724,12 @@ function showSavedIndicator(){
 
 async function boot(){
   const loader = document.getElementById('bootLoader');
-  await loadPersistedState();
+  loadPersistedState();
   applyTheme();
   const startPage = (state.page === 'assessment' || APP_PAGES.includes(state.page)) ? state.page : 'landing';
   navigate(startPage);
   loader.classList.add('hidden');
+  runDiagnostics();
 }
 
 /* ============================ NAV / ROUTER ============================ */
@@ -800,11 +794,11 @@ mobileMenu.addEventListener('click', e=>{ if(e.target.closest('[data-nav]')) mob
 
 /* ============================ TOASTS ============================ */
 function toast(title, msg, type='success'){
-  const icons = {success:'check-circle', danger:'alert-circle', info:'info'};
-  const colors = {success:'var(--success)', danger:'var(--danger)', info:'var(--primary)'};
+  const icons = {success:'check-circle', danger:'alert-circle', info:'info', warning:'alert-triangle'};
+  const colors = {success:'var(--success)', danger:'var(--danger)', info:'var(--primary)', warning:'var(--warning)'};
   const el = document.createElement('div');
   el.className = 'toast';
-  el.innerHTML = `<div class="ic" style="background:color-mix(in srgb,${colors[type]} 15%,transparent)"><svg viewBox="0 0 24 24" fill="none" stroke="${colors[type]}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${type==='success'?'<path d="M20 6 9 17l-5-5"/>':type==='danger'?'<circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/>':'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>'}</svg></div><div><b>${title}</b><p>${msg}</p></div>`;
+  el.innerHTML = `<div class="ic" style="background:color-mix(in srgb,${colors[type]} 15%,transparent)"><svg viewBox="0 0 24 24" fill="none" stroke="${colors[type]}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${type==='success'?'<path d="M20 6 9 17l-5-5"/>':type==='danger'?'<circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/>':type==='warning'?'<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/>':'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>'}</svg></div><div><b>${title}</b><p>${msg}</p></div>`;
   document.getElementById('toastWrap').appendChild(el);
   setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateY(8px)'; el.style.transition='.3s'; setTimeout(()=>el.remove(),300); }, 3600);
 }
@@ -1597,15 +1591,20 @@ function extensionTpl(){
   <div class="page-head"><div><h1>Extension status</h1><p>Live connection between VisionAdapt and your browser.</p></div></div>
   <div class="ext-status-card" style="margin-bottom:20px">
     <div style="display:flex;align-items:center;gap:14px">
-      <div class="pulse-dot" style="background:${e.connected?'var(--success)':'var(--border)'}"></div>
+      <div class="pulse-dot" id="extPulseDot" style="background:${e.connected?'var(--success)':'var(--border)'}"></div>
       <div><div style="font-weight:700;font-size:15px">${e.connected? 'Connected & applying corrections':'Not connected'}</div><div style="font-size:12.5px;color:var(--text-2)">${e.connected? `Currently detecting: ${e.game}` : 'Install the extension to get started'}</div></div>
     </div>
     <button class="btn ${e.connected?'btn-secondary':'btn-primary'} btn-sm" id="toggleExtBtn">${e.connected? 'Disconnect':'Reconnect'}</button>
   </div>
   <div class="grid-3">
     <div class="card">
+      <div class="card-head"><h3>Backend connection</h3><span id="backendStatus" class="muted">${backendStatus.reachable ? 'Connected (' + backendStatus.latencyMs + 'ms)' : 'Checking...'}</span></div>
+      <div class="compat-row"><div class="compat-left"><div class="game-ic" style="background:color-mix(in srgb,${backendStatus.reachable?'var(--success)':'var(--danger)'} 14%,transparent)"><svg viewBox="0 0 24 24" fill="none" stroke="${backendStatus.reachable?'var(--success)':'var(--danger)'}" stroke-width="2.2" width="16" height="16"><path d="M20 6 9 17l-5-5"/></svg></div><div><div style="font-size:13.5px;font-weight:600">${backendStatus.reachable ? 'API reachable' : 'API unreachable'}</div><div style="font-size:12px;color:var(--text-2)">${backendStatus.reachable ? 'Local model ' + (backendStatus.modelLoaded ? 'loaded' : 'not loaded') + ' · Latency ' + backendStatus.latencyMs + 'ms' : 'CORS / network issue — extension still works client-side'}</div></div></div><span class="badge ${backendStatus.reachable?'success':'warning'}">${backendStatus.reachable?'Online':'Offline'}</span></div>
+      <div style="margin-top:14px"><button class="btn btn-secondary btn-sm" id="diagBtn">Re-check backend</button></div>
+    </div>
+    <div class="card">
       <div class="card-head"><h3>Detected process</h3></div>
-      <div class="compat-row"><div class="compat-left"><div class="game-ic">R</div><div><div style="font-size:13.5px;font-weight:600">${e.game}</div><div style="font-size:12px;color:var(--text-2)">${e.fps} fps · shader pass active</div></div></div><span class="badge success">Live</span></div>
+      <div class="compat-row"><div class="compat-left"><div class="game-ic">${e.game?e.game[0]:'?'}</div><div><div style="font-size:13.5px;font-weight:600">${e.game || 'No game detected'}</div><div style="font-size:12px;color:var(--text-2)">${e.connected ? e.fps + ' fps · shader pass active' : 'Extension offline'}</div></div></div><span class="badge ${e.connected?'success':'warning'}">${e.connected?'Live':'Off'}</span></div>
     </div>
     <div class="card">
       <div class="card-head"><h3>Extension settings</h3></div>
@@ -1721,6 +1720,15 @@ function wireAppPage(key){
       persistState();
       toast(state.ext.connected?'Extension connected':'Extension disconnected', state.ext.connected? 'Applying your profile in real time.':'Corrections paused.', state.ext.connected?'success':'info');
     });
+    document.getElementById('diagBtn').addEventListener('click', async ()=>{
+      const btn = document.getElementById('diagBtn');
+      btn.textContent = 'Checking...';
+      btn.disabled = true;
+      await runDiagnostics();
+      btn.textContent = 'Re-check backend';
+      btn.disabled = false;
+      toast(backendStatus.reachable ? 'Backend online' : 'Backend offline', backendStatus.reachable ? `API reachable in ${backendStatus.latencyMs}ms` : 'Could not reach VisionAdapt API', backendStatus.reachable ? 'success' : 'warning');
+    });
     document.getElementById('extEnabledToggle').addEventListener('click', ()=>{ state.settings.extEnabled=!state.settings.extEnabled; syncToggle('extEnabledToggle',state.settings.extEnabled); persistState(); });
     document.getElementById('extAutoToggle').addEventListener('click', ()=>{ state.settings.extAutoDetect=!state.settings.extAutoDetect; syncToggle('extAutoToggle',state.settings.extAutoDetect); persistState(); });
     document.getElementById('extOverlayToggle').addEventListener('click', ()=>{ state.settings.extOverlay=!state.settings.extOverlay; syncToggle('extOverlayToggle',state.settings.extOverlay); persistState(); });
@@ -1788,6 +1796,37 @@ document.getElementById('confirmDelete').addEventListener('click', ()=>{
 document.addEventListener('keydown', e=>{
   if(e.key==='Escape') document.getElementById('deleteModal').classList.remove('open');
 });
+
+/* ============================ BACKEND DIAGNOSTICS ============================ */
+const API_BASE = 'https://visionadapt.vercel.app';
+let backendStatus = { reachable: false, latencyMs: null, modelLoaded: false, lastCheck: 0 };
+
+async function runDiagnostics(){
+  const t0 = performance.now();
+  try{
+    const resp = await fetch(API_BASE + '/api/v1/health', { method: 'GET' });
+    const latencyMs = Math.round(performance.now() - t0);
+    if(resp.ok){
+      const data = await resp.json();
+      backendStatus = { reachable: true, latencyMs, modelLoaded: data.local_model_loaded || false, lastCheck: Date.now(), data };
+      updateExtensionBadge();
+    } else {
+      backendStatus = { reachable: false, latencyMs, modelLoaded: false, lastCheck: Date.now() };
+    }
+  }catch(e){
+    const latencyMs = Math.round(performance.now() - t0);
+    backendStatus = { reachable: false, latencyMs, modelLoaded: false, lastCheck: Date.now(), error: e.message };
+  }
+  const el = document.getElementById('backendStatus');
+  if(el) el.textContent = backendStatus.reachable ? `Connected (${backendStatus.latencyMs}ms)` : 'Offline';
+}
+
+function updateExtensionBadge(){
+  const dot = document.getElementById('extPulseDot');
+  if(dot){
+    dot.style.background = state.ext.connected ? 'var(--success)' : 'var(--border)';
+  }
+}
 
 /* init */
 boot();
