@@ -180,7 +180,7 @@ def run_diagnostics() -> dict:
     t0 = time.time()
 
     model = _load_local_model()
-    model_loaded = bool(model and model.get("layers"))
+    model_loaded = bool(model and model.get("axis_classifier", {}).get("layers"))
 
     hf_configured = bool(HF_API_KEY)
 
