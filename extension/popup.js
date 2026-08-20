@@ -106,7 +106,8 @@
 
       if (result && result.ok && result.profile) {
         msg.className = "sync-msg ok";
-        msg.textContent = "Synced: " + result.profile.type + " (" + result.profile.severity + "% severity)";
+        var note = result.note ? " (" + result.note + ")" : "";
+        msg.textContent = "Synced: " + result.profile.type + " (" + result.profile.severity + "% severity)" + note;
         $("pType").textContent = result.profile.type;
         $("pSev").textContent = result.profile.severity + "%";
         $("pCon").textContent = (result.profile.contrast || 50) + "%";
@@ -115,8 +116,28 @@
           updateStatus(true);
         });
       } else {
-        msg.className = "sync-msg err";
-        msg.textContent = result ? (result.error || "Sync failed") : "No response from background";
+        var errMsg = result ? (result.error || "Sync failed") : "No response from background";
+        if (errMsg.indexOf("No profile") !== -1) {
+          storage.get("profile", function(d) {
+            if (d && d.profile && d.profile.type && d.profile.type !== "Not assessed") {
+              msg.className = "sync-msg ok";
+              msg.textContent = "Using local profile: " + d.profile.type;
+              $("pType").textContent = d.profile.type;
+              $("pSev").textContent = d.profile.severity + "%";
+              $("pCon").textContent = (d.profile.contrast || 50) + "%";
+              storage.set({ enabled: true }, function () {
+                togEl($("tOn"), true);
+                updateStatus(true);
+              });
+            } else {
+              msg.className = "sync-msg err";
+              msg.textContent = errMsg + " Take an assessment on the website first.";
+            }
+          });
+        } else {
+          msg.className = "sync-msg err";
+          msg.textContent = errMsg;
+        }
       }
     });
   }

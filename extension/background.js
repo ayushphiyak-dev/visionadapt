@@ -61,8 +61,16 @@
         broadcast({ type: "APPLY", profile: extProfile });
         return { ok: true, profile: extProfile };
       }
-      return { error: "No profile found on server" };
+      var local = await storage.get("profile");
+      if (local && local.profile && local.profile.type && local.profile.type !== "Not assessed") {
+        return { ok: true, profile: local.profile, source: "local", note: "Used locally stored profile (server had none)" };
+      }
+      return { error: "No profile found on server. Take an assessment on the website first." };
     } catch (e) {
+      var fallback = await storage.get("profile");
+      if (fallback && fallback.profile && fallback.profile.type && fallback.profile.type !== "Not assessed") {
+        return { ok: true, profile: fallback.profile, source: "local", note: "Backend unreachable, used local profile" };
+      }
       return { error: "Network error: " + e.message };
     }
   }
@@ -203,6 +211,18 @@
           return true;
         }
         sendResponse({ ok: false });
+        break;
+
+      case "SAVE_PROFILE_DIRECT":
+        if (msg.profile) {
+          storage.set({ profile: msg.profile, enabled: true }, function() {
+            setBadge("on");
+            broadcast({ type: "APPLY", profile: msg.profile });
+            sendResponse({ ok: true, profile: msg.profile });
+          });
+          return true;
+        }
+        sendResponse({ ok: false, error: "No profile provided" });
         break;
 
       default:
