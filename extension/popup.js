@@ -25,8 +25,8 @@
     togEl($("tOn"), data.enabled);
     togEl($("tOv"), data.overlays);
     $("pType").textContent = data.profile.type;
-    $("pSev").textContent = data.profile.severity > 0 ? data.profile.severity + "%" : "—";
-    $("pCon").textContent = data.profile.contrast + "%";
+    $("pSev").textContent = data.profile.severity > 0 ? data.profile.severity + "%" : "--";
+    $("pCon").textContent = (data.profile.contrast || 50) + "%";
 
     updateStatus(data.enabled);
 
@@ -49,8 +49,8 @@
 
     if (status && status.active) {
       $("mRow").style.display = "grid";
-      $("mFps").querySelector(".mv").textContent = status.fps || "—";
-      $("mLat").querySelector(".mv").textContent = "—";
+      $("mFps").querySelector(".mv").textContent = status.fps || "--";
+      $("mLat").querySelector(".mv").textContent = "--";
       $("mPipe").querySelector(".mv").textContent = status.pipelines || 0;
       $("mFps").className = "metric" + (status.fps >= 55 ? " good" : status.fps >= 30 ? " warn" : "");
     } else {
@@ -89,6 +89,44 @@
     if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { type: "TOGGLE_OVERLAYS", overlays: next });
   });
 
+  $("bSync").addEventListener("click", async function () {
+    var email = $("syncEmail").value.trim();
+    var pass = $("syncPass").value;
+    var msg = $("syncMsg");
+
+    if (!email || !pass) {
+      msg.className = "sync-msg err";
+      msg.textContent = "Enter email and password";
+      return;
+    }
+
+    this.textContent = "Syncing...";
+    this.disabled = true;
+    msg.className = "sync-msg info";
+    msg.textContent = "Connecting to server...";
+
+    var result = await new Promise(function(resolve) {
+      chrome.runtime.sendMessage({ type: "SYNC_REGISTER", email: email, password: pass }, resolve);
+    });
+
+    if (result && result.ok && result.profile) {
+      msg.className = "sync-msg ok";
+      msg.textContent = "Synced: " + result.profile.type + " (" + result.profile.severity + "% severity)";
+      $("pType").textContent = result.profile.type;
+      $("pSev").textContent = result.profile.severity + "%";
+      $("pCon").textContent = (result.profile.contrast || 50) + "%";
+      await storage.set({ enabled: true });
+      togEl($("tOn"), true);
+      updateStatus(true);
+    } else {
+      msg.className = "sync-msg err";
+      msg.textContent = result ? result.error : "Sync failed";
+    }
+
+    this.textContent = "Sync Profile";
+    this.disabled = false;
+  });
+
   $("bDiag").addEventListener("click", async function () {
     this.textContent = "Running...";
     this.disabled = true;
@@ -100,9 +138,9 @@
     });
 
     $("dBk").innerHTML = results && results.backend && results.backend.ok ? '<span class="d-ok">OK</span>' : '<span class="d-fail">FAIL</span>';
-    $("dBkLat").textContent = results && results.backend && results.backend.latencyMs != null ? results.backend.latencyMs + "ms" : "—";
+    $("dBkLat").textContent = results && results.backend && results.backend.latencyMs != null ? results.backend.latencyMs + "ms" : "--";
     $("dEx").innerHTML = results && results.extension && results.extension.ok ? '<span class="d-ok">OK</span>' : results && results.extension ? '<span class="d-fail">FAIL</span>' : '<span style="color:#52525b">N/A</span>';
-    $("dExLat").textContent = results && results.extension && results.extension.latencyMs != null ? results.extension.latencyMs + "ms" : "—";
+    $("dExLat").textContent = results && results.extension && results.extension.latencyMs != null ? results.extension.latencyMs + "ms" : "--";
 
     this.textContent = "Re-run Diagnostic";
     this.disabled = false;

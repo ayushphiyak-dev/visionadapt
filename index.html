@@ -737,6 +737,22 @@ async function apiSaveProfile() {
   });
 }
 
+function syncProfileToExtension() {
+  try {
+    window.postMessage({
+      type: 'VA_SYNC_PROFILE',
+      profile: { type: state.profile.type, severity: state.profile.severity,
+        contrast: state.profile.contrast, outline: state.profile.outline,
+        iconPref: state.profile.iconPref, pattern: true }
+    }, '*');
+  } catch(e) {}
+}
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'VA_EXTENSION_READY') {
+    syncProfileToExtension();
+  }
+});
+
 async function apiLoadProfile() {
   if (!authToken) return;
   const res = await apiFetch('/api/v1/profile');
@@ -1324,6 +1340,7 @@ function computeResult(){
   renderAssessment();
   persistState();
   apiSaveProfile();
+  syncProfileToExtension();
   const source = result.modelUsed
     ? `Model classification (${Math.round(result.confidence*100)}% confidence, ${result.latencyMs.toFixed(2)}ms)`
     : 'Rule-based fallback (model unavailable)';
