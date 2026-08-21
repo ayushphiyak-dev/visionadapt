@@ -359,9 +359,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;heigh
 .demo-live-wrap{max-width:1080px;margin:0 auto}
 .demo-live-grid{display:grid;grid-template-columns:1fr 340px;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#000}
 .demo-live-viewport{position:relative;aspect-ratio:16/10;background:#0d0d0d;overflow:hidden}
-.demo-live-viewport svg{width:100%;height:100%;display:block;transition:filter .4s ease}
-.demo-live-viewport.correction-off svg{filter:url(#f-deuteranopia)}
-.demo-live-viewport.correction-on svg{filter:none}
+.demo-live-viewport canvas{width:100%;height:100%;display:block;transition:filter .4s ease}
+.demo-live-viewport.correction-off canvas{filter:url(#f-deuteranopia)}
+.demo-live-viewport.correction-on canvas{filter:none}
 .demo-live-sidebar{background:#0a0a0a;border-left:1px solid var(--border);padding:24px;display:flex;flex-direction:column;gap:20px}
 .demo-live-sidebar h4{font-size:13px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em}
 .demo-ext-mock{background:#111;border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
@@ -407,6 +407,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;heigh
 .bento-card .gc-icon{width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:var(--primary);margin-bottom:14px}
 .bento-card.featured .gc-icon{width:48px;height:48px;font-size:18px}
 @media(max-width:640px){.bento-grid{grid-template-columns:1fr 1fr}.bento-card.featured{grid-column:span 2}.workflow-steps{grid-template-columns:1fr;gap:32px}.workflow-steps::before{display:none}.demo-live-grid{grid-template-columns:1fr}.demo-live-sidebar{border-left:none;border-top:1px solid var(--border)}}
+
+/* ---------- Sync Visualization ---------- */
+.sync-viz-section{padding:clamp(64px,10vw,100px) 0;border-top:1px solid var(--border);overflow:hidden}
+.sync-viz-flow{display:flex;align-items:center;justify-content:center;gap:0;max-width:960px;margin:0 auto;padding:20px 0}
+.sync-viz-node{display:flex;flex-direction:column;align-items:center;text-align:center;padding:20px 16px;min-width:120px}
+.sync-viz-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;border:1px solid var(--border);transition:transform .3s var(--ease),box-shadow .3s}
+.sync-viz-node:hover .sync-viz-icon{transform:translateY(-3px);box-shadow:var(--shadow-md)}
+.sync-viz-icon svg{width:24px;height:24px}
+.sync-viz-label{font-size:14px;font-weight:700;margin-bottom:4px}
+.sync-viz-sub{font-size:12px;color:var(--text-2);line-height:1.4}
+.sync-viz-arrow{flex-shrink:0;width:48px;display:flex;align-items:center;justify-content:center;margin-top:-24px}
+.sync-viz-arrow svg{width:48px;height:24px}
+@media(max-width:768px){.sync-viz-flow{flex-direction:column;gap:8px}.sync-viz-arrow{transform:rotate(90deg);margin-top:0}}
 
 .ext-status-card{display:flex;align-items:center;justify-content:space-between;padding:22px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--surface)}
 .pulse-dot{width:10px;height:10px;border-radius:50%;background:var(--success);position:relative}
@@ -489,8 +502,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
       <a class="nav-link" data-nav="dashboard" href="#dashboard">Dashboard</a>
       <a class="nav-link" data-nav="support" href="#support">Support</a>
     </div>
-    <div class="nav-cta">
+    <div class="nav-cta" id="navCta">
       <button class="icon-btn" id="themeToggle" aria-label="Toggle dark mode"><svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg></button>
+      <button class="btn btn-primary btn-sm" id="navSignInBtn">Sign in</button>
       <button class="icon-btn" id="mobileMenuBtn" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
   </div>
@@ -616,31 +630,11 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
     <div class="demo-live-wrap container">
       <div class="section-head">
         <h2>See it in action</h2>
-        <p>Toggle the correction switch to see how VisionAdapt transforms a game scene for color-vision-deficient players.</p>
+        <p>An interactive simulation of how VisionAdapt corrects game colors in real time. Toggle correction on/off to see the difference.</p>
       </div>
       <div class="demo-live-grid">
         <div class="demo-live-viewport correction-off" id="liveDemoViewport">
-          <svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice">
-            <rect width="640" height="400" fill="#1a1a2e"/>
-            <rect y="280" width="640" height="120" fill="#16213e"/>
-            <circle cx="100" cy="180" r="30" fill="#e74c3c"/>
-            <circle cx="240" cy="140" r="22" fill="#2ecc71"/>
-            <circle cx="400" cy="200" r="28" fill="#e67e22"/>
-            <rect x="500" y="100" width="50" height="50" rx="6" fill="#f1c40f"/>
-            <rect x="60" y="90" width="40" height="40" rx="6" fill="#3498db"/>
-            <path d="M320 300 l25 -50 25 50 z" fill="#9b59b6"/>
-            <circle cx="520" cy="260" r="18" fill="#e74c3c"/>
-            <rect x="15" y="15" width="160" height="18" rx="4" fill="#333"/>
-            <rect x="15" y="15" width="100" height="18" rx="4" fill="#e74c3c"/>
-            <rect x="15" y="40" width="120" height="10" rx="3" fill="#333"/>
-            <rect x="15" y="40" width="70" height="10" rx="3" fill="#2ecc71"/>
-            <circle cx="100" cy="180" r="30" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="4 3"/>
-            <text x="100" y="185" font-size="12" fill="#fff" text-anchor="middle" font-weight="700">ENEMY</text>
-            <circle cx="520" cy="260" r="18" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 3"/>
-            <rect x="15" y="15" width="160" height="18" rx="4" fill="none" stroke="#fff" stroke-width="1.5"/>
-            <text x="22" y="27" font-size="10" fill="#fff" font-weight="700">HP 65%</text>
-            <text x="320" y="360" font-size="14" fill="#666" text-anchor="middle" font-weight="600">Krunker.io — Team Deathmatch</text>
-          </svg>
+          <canvas id="liveGameCanvas" width="640" height="400"></canvas>
         </div>
         <div class="demo-live-sidebar">
           <h4>Extension Panel</h4>
@@ -652,22 +646,66 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
             </div>
             <div class="demo-toggle-row">
               <span class="demo-toggle-label">Color correction</span>
-              <button class="demo-cvd-toggle" id="liveDemoToggle" onclick="this.classList.toggle('on');document.getElementById('liveDemoViewport').classList.toggle('correction-off');document.getElementById('liveDemoViewport').classList.toggle('correction-on');document.getElementById('liveDemoLabel').textContent=this.classList.contains('on')?'ON — Correcting colors':'OFF — No correction'"></button>
+              <button class="demo-cvd-toggle" id="liveDemoToggle"></button>
             </div>
             <div style="font-size:12px;font-weight:600;padding:6px 0" id="liveDemoLabel">OFF — No correction</div>
             <div class="demo-ext-profile">
-              <div class="demo-ext-row"><span class="k">Type</span><span class="v">Deuteranopia</span></div>
-              <div class="demo-ext-row"><span class="k">Severity</span><span class="v">65%</span></div>
-              <div class="demo-ext-row"><span class="k">Contrast</span><span class="v">55%</span></div>
-              <div class="demo-ext-row"><span class="k">Pipeline</span><span class="v" style="color:var(--success)">WebGL active</span></div>
+              <div class="demo-ext-row"><span class="k">Type</span><span class="v" id="demoProfileType">Deuteranopia</span></div>
+              <div class="demo-ext-row"><span class="k">Severity</span><span class="v" id="demoProfileSev">65%</span></div>
+              <div class="demo-ext-row"><span class="k">Contrast</span><span class="v" id="demoProfileCon">55%</span></div>
+              <div class="demo-ext-row"><span class="k">Pipeline</span><span class="v" id="demoPipeline" style="color:var(--text-2)">WebGL idle</span></div>
+            </div>
+            <div class="demo-ext-row" style="border-top:1px solid #222;padding-top:8px;margin-top:4px">
+              <span class="k">FPS</span><span class="v" id="demoFps">60</span>
+            </div>
+            <div class="demo-ext-row">
+              <span class="k">Canvases</span><span class="v" id="demoCanvases">0</span>
+            </div>
+            <div class="demo-ext-row">
+              <span class="k">Game</span><span class="v" id="demoGame" style="color:var(--accent)">Detecting...</span>
             </div>
           </div>
           <div style="font-size:11px;color:var(--text-2);line-height:1.5">
-            The extension intercepts WebGL canvas rendering and applies a per-frame LMS color-confusion correction shader. Your personalized profile is synced from the website via your account.
+            This simulates the extension's WebGL shader pipeline. In production, it intercepts your game's canvas and applies your personalized CVD correction profile in real time.
           </div>
         </div>
       </div>
       <div class="demo-live-labels"><span>Without correction (simulated CVD)</span><span>With VisionAdapt correction</span></div>
+    </div>
+  </section>
+
+  <!-- ============ DATA SYNC VISUALIZATION ============ -->
+  <section class="sync-viz-section" id="sync-viz">
+    <div class="container">
+      <div class="section-head">
+        <h2>Seamless profile sync</h2>
+        <p>Your assessment results flow from the website through the cloud to your extension — automatically.</p>
+      </div>
+      <div class="sync-viz-flow">
+        <div class="sync-viz-node" id="syncNode1">
+          <div class="sync-viz-icon" style="background:color-mix(in srgb,var(--primary) 12%,transparent)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <div class="sync-viz-label">Website</div>
+          <div class="sync-viz-sub">Assessment completed</div>
+        </div>
+        <div class="sync-viz-arrow"><svg viewBox="0 0 48 24" fill="none"><path d="M0 12h40M36 6l6 6-6 6" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 3"><animate attributeName="stroke-dashoffset" from="14" to="0" dur="1s" repeatCount="indefinite"/></path></svg></div>
+        <div class="sync-viz-node" id="syncNode2">
+          <div class="sync-viz-icon" style="background:color-mix(in srgb,var(--accent) 12%,transparent)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+          <div class="sync-viz-label">API Server</div>
+          <div class="sync-viz-sub">Profile saved & stored</div>
+        </div>
+        <div class="sync-viz-arrow"><svg viewBox="0 0 48 24" fill="none"><path d="M0 12h40M36 6l6 6-6 6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 3"><animate attributeName="stroke-dashoffset" from="14" to="0" dur="1s" repeatCount="indefinite" begin="0.3s"/></path></svg></div>
+        <div class="sync-viz-node" id="syncNode3">
+          <div class="sync-viz-icon" style="background:color-mix(in srgb,var(--success) 12%,transparent)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h.01M15 9h.01M9 15h6"/></svg></div>
+          <div class="sync-viz-label">Extension</div>
+          <div class="sync-viz-sub">Profile synced via auth token</div>
+        </div>
+        <div class="sync-viz-arrow"><svg viewBox="0 0 48 24" fill="none"><path d="M0 12h40M36 6l6 6-6 6" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 3"><animate attributeName="stroke-dashoffset" from="14" to="0" dur="1s" repeatCount="indefinite" begin="0.6s"/></path></svg></div>
+        <div class="sync-viz-node" id="syncNode4">
+          <div class="sync-viz-icon" style="background:color-mix(in srgb,var(--warning) 12%,transparent)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4M8 21h8"/></svg></div>
+          <div class="sync-viz-label">Your Game</div>
+          <div class="sync-viz-sub">Colors corrected in real time</div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1169,7 +1207,225 @@ function makeCompareSlider(viewportEl, handleEl, rightEl){
   return { applyPct };
 }
 
-/* ============================ HERO LIVE SLIDER ============================ */
+/* ============================ LIVE DEMO CANVAS GAME SIMULATION ============================ */
+(function(){
+  const canvas = document.getElementById('liveGameCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = 640, H = 400;
+  canvas.width = W; canvas.height = H;
+
+  let correctionOn = false;
+  let frame = 0;
+
+  const toggle = document.getElementById('liveDemoToggle');
+  if(toggle){
+    toggle.addEventListener('click', function(){
+      correctionOn = !correctionOn;
+      this.classList.toggle('on', correctionOn);
+      document.getElementById('liveDemoViewport').classList.toggle('correction-off', !correctionOn);
+      document.getElementById('liveDemoViewport').classList.toggle('correction-on', correctionOn);
+      document.getElementById('liveDemoLabel').textContent = correctionOn ? 'ON — Correcting colors' : 'OFF — No correction';
+      document.getElementById('demoPipeline').textContent = correctionOn ? 'WebGL active' : 'WebGL idle';
+      document.getElementById('demoPipeline').style.color = correctionOn ? 'var(--success)' : 'var(--text-2)';
+    });
+  }
+
+  const enemies = [];
+  for(let i=0;i<8;i++){
+    enemies.push({
+      x: 80 + Math.random()*480,
+      y: 100 + Math.random()*200,
+      r: 12 + Math.random()*14,
+      vx: (Math.random()-0.5)*1.2,
+      vy: (Math.random()-0.5)*0.6,
+      color: ['#e74c3c','#2ecc71','#e67e22','#3498db'][Math.floor(Math.random()*4)],
+      type: ['ENEMY','PICKUP','HAZARD','ITEM'][Math.floor(Math.random()*4)],
+      outline: Math.random()>0.5
+    });
+  }
+
+  const pickups = [];
+  for(let i=0;i<5;i++){
+    pickups.push({
+      x: 60 + Math.random()*520,
+      y: 80 + Math.random()*240,
+      size: 8+Math.random()*6,
+      color: ['#f1c40f','#9b59b6','#1abc9c'][Math.floor(Math.random()*3)],
+      bobPhase: Math.random()*Math.PI*2
+    });
+  }
+
+  let playerX = 320, playerY = 300;
+  canvas.addEventListener('mousemove', function(e){
+    const rect = canvas.getBoundingClientRect();
+    playerX = ((e.clientX - rect.left) / rect.width) * W;
+    playerY = ((e.clientY - rect.top) / rect.height) * H;
+  });
+
+  let fpsCounter = 0, lastFpsTime = performance.now(), displayFps = 60;
+
+  function drawScene(){
+    ctx.clearRect(0, 0, W, H);
+
+    // background gradient (sky)
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, H*0.65);
+    skyGrad.addColorStop(0, '#0f172a');
+    skyGrad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, H*0.65);
+
+    // ground
+    ctx.fillStyle = '#1a2332';
+    ctx.fillRect(0, H*0.65, W, H*0.35);
+
+    // grid lines on ground
+    ctx.strokeStyle = '#253345';
+    ctx.lineWidth = 1;
+    for(let i=0;i<8;i++){
+      const y = H*0.65 + i*20;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    for(let i=0;i<16;i++){
+      const x = i*45;
+      ctx.beginPath(); ctx.moveTo(x, H*0.65); ctx.lineTo(x + 20, H); ctx.stroke();
+    }
+
+    // stars
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    for(let i=0;i<20;i++){
+      const sx = (i*97+13)%W, sy = (i*53+7)%(H*0.5);
+      ctx.beginPath(); ctx.arc(sx, sy, 0.8+Math.sin(frame*0.02+i)*0.4, 0, Math.PI*2); ctx.fill();
+    }
+
+    // buildings (far)
+    const buildings = [[40,60,30],[80,45,25],[150,70,35],[220,40,20],[310,55,30],[400,65,35],[480,50,28],[550,60,32]];
+    buildings.forEach(([bx, bh, bw])=>{
+      ctx.fillStyle = '#151f2e';
+      ctx.fillRect(bx, H*0.65-bh, bw, bh);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(bx+2, H*0.65-bh+4, bw-4, bh-8);
+      // windows
+      for(let wy=0;wy<Math.floor(bh/12);wy++){
+        for(let wx=0;wx<2;wx++){
+          ctx.fillStyle = Math.random()>0.4 ? '#f5c542' : '#2a3a4f';
+          ctx.fillRect(bx+4+wx*10, H*0.65-bh+6+wy*12, 5, 7);
+        }
+      }
+    });
+
+    // pickups (diamonds/squares)
+    pickups.forEach(p=>{
+      const by = Math.sin(frame*0.04 + p.bobPhase)*4;
+      ctx.save();
+      ctx.translate(p.x, p.y+by);
+      ctx.rotate(Math.PI/4 + frame*0.02);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-p.size/2, -p.size/2, p.size, p.size);
+      ctx.restore();
+    });
+
+    // enemies
+    enemies.forEach(e=>{
+      e.x += e.vx;
+      e.y += e.vy;
+      if(e.x < e.r+10 || e.x > W-e.r-10) e.vx *= -1;
+      if(e.y < e.r+80 || e.y > H*0.6-e.r) e.vy *= -1;
+
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.r, 0, Math.PI*2);
+      ctx.fillStyle = e.color;
+      ctx.fill();
+
+      if(e.outline){
+        ctx.setLineDash([3,3]);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 ' + Math.max(9, e.r*0.6) + 'px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(e.type, e.x, e.y);
+    });
+
+    // player crosshair
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(playerX-10, playerY); ctx.lineTo(playerX+10, playerY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(playerX, playerY-10); ctx.lineTo(playerX, playerY+10); ctx.stroke();
+    ctx.beginPath(); ctx.arc(playerX, playerY, 8, 0, Math.PI*2); ctx.stroke();
+
+    // HUD elements
+    // HP bar
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(16, 16, 180, 16);
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(16, 16, 120, 16);
+    ctx.fillStyle = '#fff';
+    ctx.font = '600 10px system-ui';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('HP 65%', 22, 25);
+
+    // shield bar
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(16, 38, 140, 10);
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillRect(16, 38, 90, 10);
+
+    // score
+    ctx.fillStyle = '#f1c40f';
+    ctx.font = '700 13px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText('SCORE: 4,280', W-16, 24);
+
+    // minimap
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(W-110, H-90, 100, 80);
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeRect(W-110, H-90, 100, 80);
+    enemies.forEach(e=>{
+      ctx.fillStyle = e.color;
+      ctx.beginPath();
+      ctx.arc(W-110+(e.x/W)*100, H-90+(e.y/H)*80, 2, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(W-110+(playerX/W)*100, H-90+(playerY/H)*80, 3, 0, Math.PI*2);
+    ctx.fill();
+
+    // game title
+    ctx.fillStyle = '#666';
+    ctx.font = '600 11px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Krunker.io — Team Deathmatch', W/2, H-12);
+
+    frame++;
+    fpsCounter++;
+    const now = performance.now();
+    if(now - lastFpsTime >= 1000){
+      displayFps = Math.round(fpsCounter*1000/(now-lastFpsTime));
+      fpsCounter = 0; lastFpsTime = now;
+      const fpsEl = document.getElementById('demoFps');
+      if(fpsEl) fpsEl.textContent = displayFps;
+      const cvEl = document.getElementById('demoCanvases');
+      if(cvEl) cvEl.textContent = '1';
+      const gEl = document.getElementById('demoGame');
+      if(gEl) gEl.textContent = 'Krunker.io';
+    }
+
+    requestAnimationFrame(drawScene);
+  }
+  requestAnimationFrame(drawScene);
+})();
 (function(){
   const vp = document.getElementById('heroViewport');
   const handle = document.getElementById('heroHandle');
@@ -2176,11 +2432,13 @@ document.getElementById('registerFormEl').addEventListener('submit', async (e)=>
 });
 
 function updateAuthUI(){
-  const navCta = document.querySelector('.nav-cta');
+  const navCta = document.getElementById('navCta');
   const existing = document.getElementById('authNavWrap');
   if(existing) existing.remove();
+  const signInBtn = document.getElementById('navSignInBtn');
   const mobileBtn = document.getElementById('mobileMenuBtn');
   if(authToken){
+    if(signInBtn) signInBtn.style.display = 'none';
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative';
     wrap.id = 'authNavWrap';
@@ -2212,16 +2470,16 @@ function updateAuthUI(){
     document.getElementById('authDropdownProfile')?.addEventListener('click', (e)=>{ e.preventDefault(); navigate('profile'); });
     document.getElementById('authDropdownSettings')?.addEventListener('click', (e)=>{ e.preventDefault(); navigate('settings'); });
   } else {
-    const btn = document.createElement('button');
-    btn.className='btn btn-primary btn-sm'; btn.id='authNavBtn'; btn.textContent='Sign in';
-    btn.addEventListener('click', ()=> openAuthModal('login'));
-    navCta.insertBefore(btn, mobileBtn);
+    if(signInBtn){ signInBtn.style.display = ''; signInBtn.onclick = ()=> openAuthModal('login'); }
   }
 }
 
 /* init */
 (async function initApp() {
   await boot();
+  document.getElementById('navSignInBtn').addEventListener('click', function(){
+    if(!authToken) openAuthModal('login');
+  });
 })();
 
 document.addEventListener('click', function(e){
