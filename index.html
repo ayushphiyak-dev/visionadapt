@@ -43,43 +43,32 @@
 <script src="https://unpkg.com/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
 <style>
 :root{
-  --bg:#F8F9FB; --surface:#FFFFFF; --surface-2:#F1F3F7;
-  /* Apple system colors — systemBlue/systemGreen/systemRed/systemOrange, light variants */
-  --primary:#007AFF; --primary-ink:#0060CC;
-  --secondary:#6C7A89; --accent:#14B8A6; --success:#34C759; --warning:#FF9500; --info:#007AFF;
-  --danger:#FF3B30; --border:#E4E7EC; --hairline:#E4E7EC; --text:#1D1D1F; --text-2:#6E6E73;
-
-  /* Apple HIG continuous-corner radius scale */
-  --radius-sm:10px; --radius-md:14px; --radius-lg:22px; --radius-xl:28px; --radius-pill:980px;
-
-  /* Depth comes mostly from hairlines, not shadow — shadows stay very soft and are reserved for elevated/floating surfaces (menus, toasts, modals) */
-  --shadow-sm:0 1px 2px rgba(0,0,0,.03);
-  --shadow-md:0 8px 24px rgba(0,0,0,.06);
-  --shadow-lg:0 24px 56px rgba(0,0,0,.12);
-
-  /* Type scale — named to match Apple's actual text styles (largeTitle 34 / title1 28 / title2 22 /
-     title3 20 / headline+body 17 / footnote 13); display/title are fluid for marketing-scale hero use */
-  --fs-display:clamp(36px,5.6vw,64px);
-  --fs-title:clamp(26px,3.4vw,38px);
+  --bg:#ffffff; --surface:#ffffff; --surface-2:#fafafa;
+  --primary:#0070F3; --primary-ink:#005BD4;
+  --secondary:#666; --accent:#00CFFF; --success:#0070F3; --warning:#F5A623; --info:#0070F3;
+  --danger:#EE0000; --border:#eaeaea; --hairline:#eaeaea; --text:#000; --text-2:#666;
+  --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --radius-xl:20px; --radius-pill:980px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 14px rgba(0,0,0,.08);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.12);
+  --fs-display:clamp(40px,6vw,72px);
+  --fs-title:clamp(28px,3.5vw,42px);
   --fs-title3:20px;
   --fs-headline:17px;
-  --fs-body:17px;
+  --fs-body:16px;
   --fs-footnote:13px;
-
-  /* 8pt spacing rhythm */
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:64px; --sp-9:96px;
-
   --ease: cubic-bezier(.22,1,.36,1);
 }
 [data-theme="dark"]{
-  --bg:#000000; --surface:#1C1C1E; --surface-2:#141416; --secondary:#8A93A3; --border:#2C2C2E; --hairline:#2C2C2E;
-  --text:#F5F5F7; --text-2:#98989D;
-  /* Apple's dark-mode system colors are brighter variants, not the same hex dimmed */
-  --primary:#0A84FF; --primary-ink:#409CFF; --info:#0A84FF;
-  --success:#30D158; --danger:#FF453A; --warning:#FF9F0A;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
-  --shadow-md:0 8px 24px rgba(0,0,0,.45);
-  --shadow-lg:0 24px 56px rgba(0,0,0,.6);
+  --bg:#000000; --surface:#0a0a0a; --surface-2:#111111;
+  --primary:#3291FF; --primary-ink:#5BA7FF;
+  --secondary:#888; --accent:#50E3C2;
+  --success:#3291FF; --danger:#EE0000; --warning:#F5A623;
+  --border:#333333; --hairline:#222222; --text:#ededed; --text-2:#888888;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:0 4px 14px rgba(0,0,0,.4);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -90,12 +79,12 @@ p{margin:0}
 a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer}
 .container{max-width:1180px;margin:0 auto;padding:0 clamp(20px,4vw,32px)}
-::selection{background:rgba(58,111,247,.18)}
+::selection{background:rgba(0,112,243,.25)}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
 
 /* ---------- Nav ---------- */
-.navbar{position:sticky;top:0;z-index:100;backdrop-filter:saturate(180%) blur(30px);background:color-mix(in srgb, var(--bg) 94%, transparent);border-bottom:1px solid transparent;transition:border-color .3s,background .3s;}
+.navbar{position:sticky;top:0;z-index:100;backdrop-filter:saturate(180%) blur(30px);background:color-mix(in srgb, var(--bg) 88%, transparent);border-bottom:1px solid transparent;transition:border-color .3s,background .3s}
 .navbar.scrolled{border-bottom-color:var(--border)}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;height:52px}
 .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16.5px}
@@ -150,7 +139,7 @@ button{font-family:inherit;cursor:pointer}
 .hero{padding:88px 0 64px;position:relative}
 .hero-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(32px,5vw,56px);align-items:center}
 .hero h1{font-size:var(--fs-display);line-height:1.05;font-weight:700;margin:20px 0 20px}
-.hero h1 .grad{background:linear-gradient(100deg,var(--primary),var(--accent) 85%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h1 .grad{background:linear-gradient(100deg,#3291FF 30%,#50E3C2 70%,#7928CA 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero p.lead{font-size:17.5px;line-height:1.6;color:var(--text-2);max-width:490px}
 .hero-actions{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
 .hero-stats{display:flex;gap:32px;margin-top:44px}
@@ -193,8 +182,8 @@ button{font-family:inherit;cursor:pointer}
 
 .stat-band{background:var(--text);border-radius:var(--radius-lg);padding:clamp(32px,5vw,52px) clamp(24px,5vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(130px,100%),1fr));gap:24px}
 [data-theme="dark"] .stat-band{background:var(--surface);border:1px solid var(--border)}
-.stat-band .n{font-size:36px;font-weight:700;color:#fff}
-.stat-band .l{font-size:12.5px;color:#9CA3AF;margin-top:6px}
+.stat-band .n{font-size:36px;font-weight:700;color:var(--text)}
+.stat-band .l{font-size:12.5px;color:var(--text-2);margin-top:6px}
 
 .tech-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:14px}
 .tech-pill{border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:18px;text-align:center;transition:.2s}
@@ -365,6 +354,60 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;heigh
 .skeleton{background:linear-gradient(90deg,var(--border) 25%,color-mix(in srgb,var(--border) 50%,var(--surface)) 37%,var(--border) 63%);background-size:400% 100%;animation:shimmer 1.4s ease infinite;border-radius:8px}
 @keyframes shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
 
+/* ---------- Vercel-style Live Demo ---------- */
+.demo-live-section{padding:clamp(64px,10vw,120px) 0;background:var(--bg);border-top:1px solid var(--border)}
+.demo-live-wrap{max-width:1080px;margin:0 auto}
+.demo-live-grid{display:grid;grid-template-columns:1fr 340px;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#000}
+.demo-live-viewport{position:relative;aspect-ratio:16/10;background:#0d0d0d;overflow:hidden}
+.demo-live-viewport svg{width:100%;height:100%;display:block;transition:filter .4s ease}
+.demo-live-viewport.correction-off svg{filter:url(#f-deuteranopia)}
+.demo-live-viewport.correction-on svg{filter:none}
+.demo-live-sidebar{background:#0a0a0a;border-left:1px solid var(--border);padding:24px;display:flex;flex-direction:column;gap:20px}
+.demo-live-sidebar h4{font-size:13px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em}
+.demo-ext-mock{background:#111;border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.demo-ext-header{display:flex;align-items:center;gap:10px}
+.demo-ext-dot{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#3291FF,#50E3C2);display:flex;align-items:center;justify-content:center}
+.demo-ext-dot svg{width:14px;height:14px;stroke:#fff;fill:none}
+.demo-ext-name{font-weight:700;font-size:13px;color:#ededed}
+.demo-ext-ver{font-size:11px;color:#555;margin-left:auto}
+.demo-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #222}
+.demo-toggle-label{font-size:13px;font-weight:500;color:#ccc}
+.demo-cvd-toggle{width:44px;height:24px;border-radius:12px;background:#333;position:relative;cursor:pointer;border:none;transition:background .25s}
+.demo-cvd-toggle::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#666;transition:left .25s,background .25s}
+.demo-cvd-toggle.on{background:#3291FF}
+.demo-cvd-toggle.on::after{left:22px;background:#fff}
+.demo-ext-profile{background:#111;border:1px solid #222;border-radius:8px;padding:10px}
+.demo-ext-row{display:flex;justify-content:space-between;padding:3px 0;font-size:12px}
+.demo-ext-row .k{color:#888}
+.demo-ext-row .v{color:#ededed;font-weight:600}
+.demo-live-labels{display:flex;justify-content:space-between;margin-top:12px;font-size:12px;color:var(--text-2);font-weight:500}
+.demo-live-labels span:first-child{color:var(--danger)}
+.demo-live-labels span:last-child{color:var(--success)}
+
+/* ---------- Workflow Section ---------- */
+.workflow-section{padding:clamp(64px,10vw,100px) 0;border-top:1px solid var(--border)}
+.workflow-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;max-width:900px;margin:0 auto;position:relative}
+.workflow-steps::before{content:"";position:absolute;top:48px;left:calc(16.66% + 16px);right:calc(16.66% + 16px);height:1px;background:linear-gradient(90deg,var(--primary),var(--accent))}
+.workflow-step{display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 24px;position:relative}
+.workflow-step-num{width:48px;height:48px;border-radius:50%;background:var(--surface);border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:var(--primary);margin-bottom:20px;z-index:1}
+.workflow-step h4{font-size:15px;font-weight:700;margin-bottom:8px}
+.workflow-step p{font-size:13px;color:var(--text-2);line-height:1.5;max-width:220px}
+.workflow-step .step-icon{width:64px;height:64px;border-radius:16px;background:color-mix(in srgb,var(--primary) 10%,transparent);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.workflow-step .step-icon svg{width:28px;height:28px;color:var(--primary)}
+
+/* ---------- Bento Games Grid ---------- */
+.bento-section{padding:clamp(48px,8vw,80px) 0;border-top:1px solid var(--border)}
+.bento-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:auto auto;gap:12px;max-width:900px;margin:0 auto}
+.bento-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;display:flex;flex-direction:column;justify-content:space-between;transition:border-color .2s,transform .2s;min-height:140px}
+.bento-card:hover{border-color:color-mix(in srgb,var(--primary) 40%,var(--border));transform:translateY(-2px)}
+.bento-card.featured{grid-column:span 2;min-height:180px;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 8%,var(--surface)),var(--surface))}
+.bento-card .gc-name{font-size:18px;font-weight:700;margin-bottom:4px}
+.bento-card .gc-genre{font-size:12px;color:var(--text-2);font-weight:500}
+.bento-card .gc-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:color-mix(in srgb,var(--success) 12%,transparent);color:var(--success);margin-top:12px;align-self:flex-start}
+.bento-card .gc-icon{width:40px;height:40px;border-radius:10px;background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:var(--primary);margin-bottom:14px}
+.bento-card.featured .gc-icon{width:48px;height:48px;font-size:18px}
+@media(max-width:640px){.bento-grid{grid-template-columns:1fr 1fr}.bento-card.featured{grid-column:span 2}.workflow-steps{grid-template-columns:1fr;gap:32px}.workflow-steps::before{display:none}.demo-live-grid{grid-template-columns:1fr}.demo-live-sidebar{border-left:none;border-top:1px solid var(--border)}}
+
 .ext-status-card{display:flex;align-items:center;justify-content:space-between;padding:22px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--surface)}
 .pulse-dot{width:10px;height:10px;border-radius:50%;background:var(--success);position:relative}
 .pulse-dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--success);animation:pulse 1.8s ease-out infinite}
@@ -416,7 +459,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
 }
 </style>
 </head>
-<body data-theme="light">
+<body data-theme="dark">
 <a href="#main" class="skip-link">Skip to content</a>
 <div class="boot-loader" id="bootLoader"><div class="boot-spinner"></div></div>
 <div class="save-indicator" id="saveIndicator"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>Saved to your profile</span></div>
@@ -463,33 +506,35 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
 
 <!-- ============ LANDING ============ -->
 <div class="view active" id="view-landing">
-  <header class="hero container" id="main">
+  <header class="hero container" id="main" style="position:relative;overflow:hidden">
+    <div style="position:absolute;top:-200px;right:-200px;width:600px;height:600px;background:radial-gradient(circle,rgba(0,112,243,.12) 0%,transparent 70%);pointer-events:none"></div>
+    <div style="position:absolute;bottom:-300px;left:-150px;width:500px;height:500px;background:radial-gradient(circle,rgba(80,227,194,.08) 0%,transparent 70%);pointer-events:none"></div>
     <div class="hero-grid">
       <div>
-        <span class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg> Real-time accessibility engine</span>
+        <span class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg> Accessibility Engine</span>
         <h1>See every game<br>the way it was<br><span class="grad">meant to be seen.</span></h1>
-        <p class="lead">VisionAdapt builds a personal color-vision profile in under four minutes, then remaps colors, boosts contrast, and overlays icons across your games in real time — no dev support required.</p>
+        <p class="lead">A personal color-vision profile built in minutes, applied across your games in real time through a WebGL shader pipeline — no dev support required.</p>
         <div class="hero-actions">
           <a class="btn btn-primary" data-nav="assessment" href="#assessment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Start free assessment</a>
           <a class="btn btn-secondary" data-nav="dashboard" href="#dashboard">Explore the dashboard</a>
         </div>
-        <div class="hero-stats">
-          <div class="hero-stat"><b>2.1M+</b><span>gamers affected by CVD in NA</span></div>
-          <div class="hero-stat"><b>96%</b><span>plate accuracy after correction</span></div>
-          <div class="hero-stat"><b>11ms</b><span>avg. frame remap latency</span></div>
+        <div style="display:flex;gap:32px;margin-top:40px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:8px;background:color-mix(in srgb,var(--primary) 12%,transparent);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" width="16" height="16"><path d="M12 2v20M2 12h20"/></svg></div><div><b style="font-size:15px;font-weight:700">2.1M+</b><div style="font-size:11px;color:var(--text-2)">gamers with CVD</div></div></div>
+          <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:8px;background:color-mix(in srgb,var(--accent) 12%,transparent);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3"/></svg></div><div><b style="font-size:15px;font-weight:700">11ms</b><div style="font-size:11px;color:var(--text-2)">frame latency</div></div></div>
+          <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:8px;background:color-mix(in srgb,var(--success) 12%,transparent);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="16" height="16"><path d="M20 6 9 17l-5-5"/></svg></div><div><b style="font-size:15px;font-weight:700">96%</b><div style="font-size:11px;color:var(--text-2)">plate accuracy</div></div></div>
         </div>
       </div>
       <div>
-        <div class="demo-card">
+        <div class="demo-card" style="background:#0a0a0a;border-color:#222">
           <div class="demo-top">
-            <span class="demo-tag">Live simulation · Ranked Arena</span>
+            <span class="demo-tag">Live simulation</span>
             <div class="demo-toggle" id="cvdToggle">
               <button data-cvd="deuteranopia" class="active">Deutan</button>
               <button data-cvd="protanopia">Protan</button>
               <button data-cvd="tritanopia">Tritan</button>
             </div>
           </div>
-          <div class="demo-viewport" id="heroViewport">
+          <div class="demo-viewport" id="heroViewport" style="background:#0d0d0d;border-color:#222">
             <svg viewBox="0 0 400 250" preserveAspectRatio="xMidYMid slice" id="sceneLeft" style="filter:url(#f-deuteranopia)">
               <use href="#gameScene"/>
             </svg>
@@ -499,9 +544,16 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
             </svg>
             <div class="slider-handle" id="heroHandle" style="left:50%" aria-label="Compare simulated and corrected gameplay. Use arrow keys to adjust."></div>
           </div>
-          <div class="demo-labels"><span>Unfiltered vision</span><span>VisionAdapt corrected</span></div>
+          <div class="demo-labels"><span style="color:#EE0000">Without correction</span><span style="color:#00CFFF">With VisionAdapt</span></div>
         </div>
       </div>
+    </div>
+    <!-- How it works mini-strip -->
+    <div style="display:flex;gap:0;margin-top:56px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow-x:auto">
+      <div style="flex:1;min-width:180px;padding:20px 24px;border-right:1px solid var(--border);display:flex;align-items:center;gap:14px"><div style="width:32px;height:32px;border-radius:50%;background:color-mix(in srgb,var(--primary) 15%,transparent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:var(--primary);flex-shrink:0">1</div><div><div style="font-size:13px;font-weight:700">Take Assessment</div><div style="font-size:11px;color:var(--text-2)">4-minute clinical screening</div></div></div>
+      <div style="flex:1;min-width:180px;padding:20px 24px;border-right:1px solid var(--border);display:flex;align-items:center;gap:14px"><div style="width:32px;height:32px;border-radius:50%;background:color-mix(in srgb,var(--primary) 15%,transparent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:var(--primary);flex-shrink:0">2</div><div><div style="font-size:13px;font-weight:700">Build Profile</div><div style="font-size:11px;color:var(--text-2)">LMS confusion matrix</div></div></div>
+      <div style="flex:1;min-width:180px;padding:20px 24px;border-right:1px solid var(--border);display:flex;align-items:center;gap:14px"><div style="width:32px;height:32px;border-radius:50%;background:color-mix(in srgb,var(--primary) 15%,transparent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:var(--primary);flex-shrink:0">3</div><div><div style="font-size:13px;font-weight:700">Install Extension</div><div style="font-size:11px;color:var(--text-2)">Chrome Web Store</div></div></div>
+      <div style="flex:1;min-width:180px;padding:20px 24px;display:flex;align-items:center;gap:14px"><div style="width:32px;height:32px;border-radius:50%;background:color-mix(in srgb,var(--accent) 15%,transparent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:var(--accent);flex-shrink:0">4</div><div><div style="font-size:13px;font-weight:700">Play Any Game</div><div style="font-size:11px;color:var(--text-2)">Real-time color correction</div></div></div>
     </div>
   </header>
 
@@ -559,6 +611,132 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
     </div>
   </section>
 
+  <!-- ============ LIVE EXTENSION DEMO ============ -->
+  <section class="demo-live-section" id="ext-demo">
+    <div class="demo-live-wrap container">
+      <div class="section-head">
+        <h2>See it in action</h2>
+        <p>Toggle the correction switch to see how VisionAdapt transforms a game scene for color-vision-deficient players.</p>
+      </div>
+      <div class="demo-live-grid">
+        <div class="demo-live-viewport correction-off" id="liveDemoViewport">
+          <svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice">
+            <rect width="640" height="400" fill="#1a1a2e"/>
+            <rect y="280" width="640" height="120" fill="#16213e"/>
+            <circle cx="100" cy="180" r="30" fill="#e74c3c"/>
+            <circle cx="240" cy="140" r="22" fill="#2ecc71"/>
+            <circle cx="400" cy="200" r="28" fill="#e67e22"/>
+            <rect x="500" y="100" width="50" height="50" rx="6" fill="#f1c40f"/>
+            <rect x="60" y="90" width="40" height="40" rx="6" fill="#3498db"/>
+            <path d="M320 300 l25 -50 25 50 z" fill="#9b59b6"/>
+            <circle cx="520" cy="260" r="18" fill="#e74c3c"/>
+            <rect x="15" y="15" width="160" height="18" rx="4" fill="#333"/>
+            <rect x="15" y="15" width="100" height="18" rx="4" fill="#e74c3c"/>
+            <rect x="15" y="40" width="120" height="10" rx="3" fill="#333"/>
+            <rect x="15" y="40" width="70" height="10" rx="3" fill="#2ecc71"/>
+            <circle cx="100" cy="180" r="30" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="4 3"/>
+            <text x="100" y="185" font-size="12" fill="#fff" text-anchor="middle" font-weight="700">ENEMY</text>
+            <circle cx="520" cy="260" r="18" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 3"/>
+            <rect x="15" y="15" width="160" height="18" rx="4" fill="none" stroke="#fff" stroke-width="1.5"/>
+            <text x="22" y="27" font-size="10" fill="#fff" font-weight="700">HP 65%</text>
+            <text x="320" y="360" font-size="14" fill="#666" text-anchor="middle" font-weight="600">Krunker.io — Team Deathmatch</text>
+          </svg>
+        </div>
+        <div class="demo-live-sidebar">
+          <h4>Extension Panel</h4>
+          <div class="demo-ext-mock">
+            <div class="demo-ext-header">
+              <div class="demo-ext-dot"><svg viewBox="0 0 24 24" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></div>
+              <span class="demo-ext-name">VisionAdapt</span>
+              <span class="demo-ext-ver">v1.0.0</span>
+            </div>
+            <div class="demo-toggle-row">
+              <span class="demo-toggle-label">Color correction</span>
+              <button class="demo-cvd-toggle" id="liveDemoToggle" onclick="this.classList.toggle('on');document.getElementById('liveDemoViewport').classList.toggle('correction-off');document.getElementById('liveDemoViewport').classList.toggle('correction-on');document.getElementById('liveDemoLabel').textContent=this.classList.contains('on')?'ON — Correcting colors':'OFF — No correction'"></button>
+            </div>
+            <div style="font-size:12px;font-weight:600;padding:6px 0" id="liveDemoLabel">OFF — No correction</div>
+            <div class="demo-ext-profile">
+              <div class="demo-ext-row"><span class="k">Type</span><span class="v">Deuteranopia</span></div>
+              <div class="demo-ext-row"><span class="k">Severity</span><span class="v">65%</span></div>
+              <div class="demo-ext-row"><span class="k">Contrast</span><span class="v">55%</span></div>
+              <div class="demo-ext-row"><span class="k">Pipeline</span><span class="v" style="color:var(--success)">WebGL active</span></div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--text-2);line-height:1.5">
+            The extension intercepts WebGL canvas rendering and applies a per-frame LMS color-confusion correction shader. Your personalized profile is synced from the website via your account.
+          </div>
+        </div>
+      </div>
+      <div class="demo-live-labels"><span>Without correction (simulated CVD)</span><span>With VisionAdapt correction</span></div>
+    </div>
+  </section>
+
+  <!-- ============ WORKFLOW / SYNC ============ -->
+  <section class="workflow-section">
+    <div class="container">
+      <div class="section-head">
+        <h2>From assessment to game</h2>
+        <p>Three steps from knowing your CVD type to playing with full color clarity.</p>
+      </div>
+      <div class="workflow-steps">
+        <div class="workflow-step">
+          <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <div class="workflow-step-num">1</div>
+          <h4>Take Assessment</h4>
+          <p>Answer 7 clinically-grounded questions. Our ML model classifies your CVD type and severity in real time.</p>
+        </div>
+        <div class="workflow-step">
+          <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+          <div class="workflow-step-num">2</div>
+          <h4>Profile Syncs</h4>
+          <p>Your profile is saved to your account and automatically synced to the Chrome extension.</p>
+        </div>
+        <div class="workflow-step">
+          <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <div class="workflow-step-num">3</div>
+          <h4>Play Any Game</h4>
+          <p>Open any supported game. The extension applies your correction shader in real time at native frame rate.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SUPPORTED GAMES BENTO ============ -->
+  <section class="bento-section" id="games">
+    <div class="container">
+      <div class="section-head">
+        <h2>Works with your games</h2>
+        <p>Auto-detects canvas-based games and applies correction instantly.</p>
+      </div>
+      <div class="bento-grid">
+        <div class="bento-card featured">
+          <div><div class="gc-icon">K</div><div class="gc-name">Krunker.io</div><div class="gc-genre">First-Person Shooter</div></div>
+          <div class="gc-badge">Auto-detected</div>
+        </div>
+        <div class="bento-card">
+          <div><div class="gc-icon">SS</div><div class="gc-name">Shell Shockers</div><div class="gc-genre">FPS</div></div>
+          <div class="gc-badge">Supported</div>
+        </div>
+        <div class="bento-card">
+          <div><div class="gc-icon">1v1</div><div class="gc-name">1v1.LOL</div><div class="gc-genre">Shooter</div></div>
+          <div class="gc-badge">Supported</div>
+        </div>
+        <div class="bento-card">
+          <div><div class="gc-icon">S</div><div class="gc-name">Slope</div><div class="gc-genre">Runner</div></div>
+          <div class="gc-badge">Supported</div>
+        </div>
+        <div class="bento-card featured">
+          <div><div class="gc-icon">R</div><div class="gc-name">Roblox</div><div class="gc-genre">Platform — 40M+ daily users</div></div>
+          <div class="gc-badge">Auto-detected</div>
+        </div>
+        <div class="bento-card">
+          <div><div class="gc-icon">C</div><div class="gc-name">Chess.com</div><div class="gc-genre">Strategy</div></div>
+          <div class="gc-badge">Supported</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="landing-tech">
     <div class="container">
       <div class="section-head">
@@ -587,11 +765,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
       <div>
         <div class="brand" style="margin-bottom:10px"><div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></div>VisionAdapt</div>
         <p style="font-size:13px;color:var(--text-2);max-width:240px;line-height:1.6">Accessibility infrastructure for color-vision-deficient gamers.</p>
+        <div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--border);border-radius:99px;font-size:11px;font-weight:600;color:var(--text-2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 2 2 7l10 5 10-5-10-5z"/></svg>Built for Prasunethon 2.0</div>
       </div>
       <div class="footer-cols">
-        <div class="footer-col"><h5>Product</h5><a data-nav="landing-features" href="#landing">Features</a><a data-nav="landing-tech" href="#landing">Technology</a><a data-nav="assessment" href="#assessment">Assessment</a></div>
+        <div class="footer-col"><h5>Product</h5><a data-nav="landing-features" href="#landing">Features</a><a data-nav="landing-tech" href="#landing">Technology</a><a data-nav="assessment" href="#assessment">Assessment</a><a href="#ext-demo">Live Demo</a></div>
         <div class="footer-col"><h5>Account</h5><a data-nav="dashboard" href="#dashboard">Dashboard</a><a data-nav="profile" href="#profile">Profile</a><a data-nav="settings" href="#settings">Settings</a></div>
-        <div class="footer-col"><h5>Company</h5><a data-nav="support" href="#support">Support</a><a data-nav="extension" href="#extension">Extension status</a></div>
+        <div class="footer-col"><h5>Developers</h5><a href="https://github.com/ayushphiyak-dev/visionadapt" target="_blank" rel="noopener">GitHub</a><a href="#games">Supported Games</a><a data-nav="extension" href="#extension">Extension Status</a></div>
       </div>
     </div>
     <div class="footer-bottom">© 2026 VisionAdapt. Built for accessible competitive gaming.</div>
