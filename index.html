@@ -180,6 +180,33 @@ button{font-family:inherit;cursor:pointer}
 .demo-labels span:first-child{color:var(--text-3)}
 .demo-labels span:last-child{color:var(--accent)}
 
+/* ---------- Demo compare badges (on-pane overlays) ---------- */
+.demo-compare-badge{position:absolute;top:16px;z-index:10;display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--radius-pill);font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);pointer-events:none;white-space:nowrap}
+.demo-compare-badge.badge-before{left:16px;background:rgba(239,68,68,.85);color:#fff;box-shadow:0 2px 12px rgba(239,68,68,.3)}
+.demo-compare-badge.badge-before::before{content:"";width:7px;height:7px;border-radius:50%;background:#fff;flex-shrink:0}
+.demo-compare-badge.badge-after{right:16px;background:rgba(34,197,94,.85);color:#fff;box-shadow:0 2px 12px rgba(34,197,94,.3)}
+.demo-compare-badge.badge-after::before{content:"";width:7px;height:7px;border-radius:50%;background:#fff;flex-shrink:0}
+
+/* ---------- Demo compare container (dual-canvas) ---------- */
+.demo-compare-wrap{position:relative;border:1px solid var(--border);border-radius:var(--radius-xl);overflow:hidden;background:#050505;box-shadow:var(--shadow-lg)}
+.demo-compare-canvas-wrap{position:relative;aspect-ratio:16/10;overflow:hidden}
+.demo-compare-canvas-wrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.demo-compare-canvas-wrap .cvd-filtered{z-index:1}
+.demo-compare-canvas-wrap .cvd-corrected{z-index:2}
+.demo-compare-slider-track{position:absolute;inset:0;z-index:5;cursor:ew-resize;touch-action:none}
+.demo-compare-divider{position:absolute;top:0;bottom:0;width:3px;background:#fff;z-index:6;pointer-events:none;box-shadow:0 0 12px rgba(255,255,255,.4)}
+.demo-compare-handle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:42px;height:42px;border-radius:50%;background:#fff;border:3px solid rgba(255,255,255,.9);box-shadow:0 2px 16px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:7;pointer-events:none}
+.demo-compare-handle svg{width:18px;height:18px;color:#111}
+.demo-compare-legend{display:flex;justify-content:space-between;padding:14px 20px;background:var(--surface);border-top:1px solid var(--hairline)}
+.demo-compare-legend-item{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.demo-compare-legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+
+/* ---------- Demo CVD type pills ---------- */
+.demo-cvd-pills{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.demo-cvd-pill{border:1.5px solid var(--border);background:transparent;border-radius:var(--radius-pill);padding:6px 14px;font-size:12px;font-weight:600;color:var(--text-2);transition:all var(--transition-fast);cursor:pointer}
+.demo-cvd-pill:hover{border-color:var(--primary);color:var(--text)}
+.demo-cvd-pill.active{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--primary)}
+
 .section{padding:clamp(64px,10vw,112px) 0;scroll-margin-top:68px}
 .section-head{max-width:580px;margin:0 auto 56px;text-align:center}
 .section-head h2{font-size:var(--fs-title);font-weight:800;letter-spacing:-.03em}
@@ -504,10 +531,10 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
         <div class="demo-card">
           <div class="demo-top">
             <span class="demo-tag">Live simulation · Ranked Arena</span>
-            <div class="demo-toggle" id="cvdToggle">
-              <button data-cvd="deuteranopia" class="active">Deutan</button>
-              <button data-cvd="protanopia">Protan</button>
-              <button data-cvd="tritanopia">Tritan</button>
+            <div class="demo-cvd-pills" id="cvdToggle">
+              <button data-cvd="deuteranopia" class="demo-cvd-pill active">Deutan</button>
+              <button data-cvd="protanopia" class="demo-cvd-pill">Protan</button>
+              <button data-cvd="tritanopia" class="demo-cvd-pill">Tritan</button>
             </div>
           </div>
           <div class="demo-viewport" id="heroViewport">
@@ -518,6 +545,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
               <use href="#gameScene"/>
               <use href="#gameOverlay"/>
             </svg>
+            <div class="demo-compare-badge badge-before">
+              <span>Without Extension</span>
+            </div>
+            <div class="demo-compare-badge badge-after">
+              <span>VisionAdapt Active</span>
+            </div>
             <div class="slider-handle" id="heroHandle" style="left:50%" aria-label="Compare simulated and corrected gameplay. Use arrow keys to adjust."></div>
           </div>
           <div class="demo-labels">
@@ -537,28 +570,102 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
     </div>
   </header>
 
-  <!-- hidden reusable scene defs -->
+  <!-- hidden reusable scene defs — vibrant game scene with many CVD-sensitive colors -->
   <svg width="0" height="0" style="position:absolute">
     <defs>
       <g id="gameScene">
-        <rect width="400" height="250" fill="#1c2333"/>
-        <rect x="0" y="180" width="400" height="70" fill="#232b40"/>
-        <circle cx="90" cy="120" r="26" fill="#e0574f"/>
-        <circle cx="180" cy="90" r="18" fill="#4a9e5c"/>
-        <circle cx="260" cy="140" r="22" fill="#c96a2b"/>
-        <rect x="300" y="60" width="40" height="40" rx="6" fill="#d4a934"/>
-        <rect x="40" y="60" width="30" height="30" rx="6" fill="#3f6fb0"/>
-        <path d="M150 200 l20 -40 20 40 z" fill="#7a4fb5"/>
-        <circle cx="330" cy="180" r="14" fill="#e0574f"/>
-        <rect x="10" y="10" width="120" height="14" rx="4" fill="#374151"/>
-        <rect x="10" y="10" width="80" height="14" rx="4" fill="#e0574f"/>
+        <!-- sky gradient -->
+        <defs><linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0c1445"/><stop offset="100%" stop-color="#1a2744"/></linearGradient></defs>
+        <rect width="400" height="250" fill="url(#skyG)"/>
+        <!-- stars -->
+        <circle cx="30" cy="18" r="1" fill="#fff" opacity=".6"/><circle cx="75" cy="32" r="0.8" fill="#fff" opacity=".4"/><circle cx="140" cy="12" r="1.2" fill="#fff" opacity=".5"/><circle cx="210" cy="25" r="0.7" fill="#fff" opacity=".6"/><circle cx="290" cy="15" r="1" fill="#fff" opacity=".3"/><circle cx="350" cy="30" r="0.9" fill="#fff" opacity=".5"/><circle cx="380" cy="10" r="0.6" fill="#fff" opacity=".4"/>
+        <!-- ground -->
+        <rect x="0" y="185" width="400" height="65" fill="#1c2b1c"/>
+        <rect x="0" y="185" width="400" height="4" fill="#2d4a2d"/>
+        <!-- buildings -->
+        <rect x="20" y="110" width="35" height="75" rx="2" fill="#1a1a2e"/>
+        <rect x="22" y="114" width="31" height="67" fill="#252540"/>
+        <rect x="25" y="118" width="8" height="8" rx="1" fill="#f5c542"/><rect x="38" y="118" width="8" height="8" rx="1" fill="#2a3a5a"/>
+        <rect x="25" y="130" width="8" height="8" rx="1" fill="#2a3a5a"/><rect x="38" y="130" width="8" height="8" rx="1" fill="#f5c542"/>
+        <rect x="25" y="142" width="8" height="8" rx="1" fill="#f5c542"/><rect x="38" y="142" width="8" height="8" rx="1" fill="#f5c542"/>
+        <rect x="25" y="154" width="8" height="8" rx="1" fill="#2a3a5a"/><rect x="38" y="154" width="8" height="8" rx="1" fill="#2a3a5a"/>
+        <rect x="65" y="85" width="40" height="100" rx="2" fill="#16213e"/>
+        <rect x="68" y="89" width="34" height="92" fill="#1f2f50"/>
+        <rect x="71" y="93" width="7" height="7" rx="1" fill="#e8e850"/><rect x="82" y="93" width="7" height="7" rx="1" fill="#e8e850"/>
+        <rect x="71" y="104" width="7" height="7" rx="1" fill="#2a3a5a"/><rect x="82" y="104" width="7" height="7" rx="1" fill="#e8e850"/>
+        <rect x="71" y="115" width="7" height="7" rx="1" fill="#e8e850"/><rect x="82" y="115" width="7" height="7" rx="1" fill="#2a3a5a"/>
+        <rect x="71" y="126" width="7" height="7" rx="1" fill="#2a3a5a"/><rect x="82" y="126" width="7" height="7" rx="1" fill="#2a3a5a"/>
+        <rect x="120" y="100" width="30" height="85" rx="2" fill="#0f3460"/>
+        <rect x="122" y="104" width="26" height="77" fill="#1a4a7a"/>
+        <rect x="125" y="108" width="6" height="6" rx="1" fill="#50c878"/><rect x="135" y="108" width="6" height="6" rx="1" fill="#50c878"/>
+        <rect x="125" y="118" width="6" height="6" rx="1" fill="#50c878"/><rect x="135" y="118" width="6" height="6" rx="1" fill="#2a3a5a"/>
+        <rect x="125" y="128" width="6" height="6" rx="1" fill="#2a3a5a"/><rect x="135" y="128" width="6" height="6" rx="1" fill="#50c878"/>
+        <rect x="165" y="130" width="25" height="55" rx="2" fill="#2c1654"/>
+        <rect x="167" y="134" width="21" height="47" fill="#3d2066"/>
+        <rect x="170" y="138" width="5" height="5" rx="1" fill="#c084fc"/><rect x="179" y="138" width="5" height="5" rx="1" fill="#c084fc"/>
+        <rect x="170" y="148" width="5" height="5" rx="1" fill="#2a3a5a"/><rect x="179" y="148" width="5" height="5" rx="1" fill="#c084fc"/>
+        <rect x="260" y="95" width="38" height="90" rx="2" fill="#1a1a2e"/>
+        <rect x="263" y="99" width="32" height="82" fill="#252540"/>
+        <rect x="266" y="103" width="6" height="6" rx="1" fill="#f97316"/><rect x="276" y="103" width="6" height="6" rx="1" fill="#f97316"/>
+        <rect x="266" y="113" width="6" height="6" rx="1" fill="#2a3a5a"/><rect x="276" y="113" width="6" height="6" rx="1" fill="#f97316"/>
+        <rect x="266" y="123" width="6" height="6" rx="1" fill="#f97316"/><rect x="276" y="123" width="6" height="6" rx="1" fill="#2a3a5a"/>
+        <rect x="310" y="120" width="32" height="65" rx="2" fill="#16213e"/>
+        <rect x="313" y="124" width="26" height="57" fill="#1f2f50"/>
+        <rect x="316" y="128" width="5" height="5" rx="1" fill="#06b6d4"/><rect x="325" y="128" width="5" height="5" rx="1" fill="#06b6d4"/>
+        <rect x="316" y="138" width="5" height="5" rx="1" fill="#2a3a5a"/><rect x="325" y="138" width="5" height="5" rx="1" fill="#06b6d4"/>
+        <rect x="355" y="140" width="30" height="45" rx="2" fill="#1a1a2e"/>
+        <rect x="358" y="144" width="24" height="37" fill="#252540"/>
+        <rect x="361" y="148" width="5" height="5" rx="1" fill="#ec4899"/><rect x="370" y="148" width="5" height="5" rx="1" fill="#ec4899"/>
+        <!-- enemies — red, orange, magenta, yellow, cyan for CVD sensitivity -->
+        <circle cx="85" cy="160" r="16" fill="#ef4444" stroke="#fca5a5" stroke-width="2"/>
+        <text x="85" y="164" font-size="8" fill="#fff" text-anchor="middle" font-weight="700">ENEMY</text>
+        <circle cx="175" cy="150" r="12" fill="#f97316" stroke="#fdba74" stroke-width="2"/>
+        <text x="175" y="153" font-size="7" fill="#fff" text-anchor="middle" font-weight="700">BOT</text>
+        <circle cx="290" cy="165" r="14" fill="#ec4899" stroke="#f9a8d4" stroke-width="2"/>
+        <text x="290" y="169" font-size="7" fill="#fff" text-anchor="middle" font-weight="700">BOSS</text>
+        <circle cx="350" cy="155" r="10" fill="#eab308" stroke="#fde047" stroke-width="2"/>
+        <text x="350" y="158" font-size="6" fill="#111" text-anchor="middle" font-weight="700">MOB</text>
+        <!-- pickups — green, cyan, purple for contrast against enemies -->
+        <rect x="130" y="145" width="14" height="14" rx="3" fill="#22c55e" stroke="#86efac" stroke-width="1.5"/>
+        <text x="137" y="155" font-size="6" fill="#fff" text-anchor="middle" font-weight="700">+</text>
+        <rect x="230" y="140" width="12" height="12" rx="3" fill="#06b6d4" stroke="#67e8f9" stroke-width="1.5"/>
+        <text x="236" y="149" font-size="5" fill="#fff" text-anchor="middle" font-weight="700">$</text>
+        <rect x="380" y="170" width="11" height="11" rx="3" fill="#a855f7" stroke="#d8b4fe" stroke-width="1.5"/>
+        <!-- weapon / item -->
+        <polygon points="40,170 50,155 60,170" fill="#f59e0b" stroke="#fcd34d" stroke-width="1.5"/>
+        <text x="50" y="167" font-size="6" fill="#111" text-anchor="middle" font-weight="700">W</text>
+        <!-- ammo box -->
+        <rect x="195" y="168" width="18" height="12" rx="2" fill="#dc2626" stroke="#fca5a5" stroke-width="1"/>
+        <text x="204" y="177" font-size="6" fill="#fff" text-anchor="middle" font-weight="700">AMMO</text>
+        <!-- portal / objective -->
+        <ellipse cx="320" cy="175" rx="15" ry="20" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-dasharray="4 3"/>
+        <ellipse cx="320" cy="175" rx="8" ry="12" fill="#7c3aed" opacity=".5"/>
+        <!-- HUD top bar -->
+        <rect x="8" y="8" width="130" height="16" rx="4" fill="rgba(0,0,0,0.6)"/>
+        <rect x="8" y="8" width="85" height="16" rx="4" fill="#ef4444"/>
+        <text x="14" y="19" font-size="9" fill="#fff" font-weight="700">HP 65%</text>
+        <!-- XP bar -->
+        <rect x="8" y="28" width="100" height="8" rx="4" fill="rgba(0,0,0,0.5)"/>
+        <rect x="8" y="28" width="60" height="8" rx="4" fill="#22c55e"/>
+        <!-- kill feed -->
+        <rect x="280" y="8" width="112" height="14" rx="3" fill="rgba(0,0,0,0.5)"/>
+        <text x="286" y="18" font-size="7" fill="#f87171" font-weight="600">You killed BOT</text>
+        <!-- compass / minimap border -->
+        <rect x="340" y="5" width="52" height="40" rx="4" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+        <text x="366" y="17" font-size="6" fill="rgba(255,255,255,0.5)" text-anchor="middle">N</text>
+        <!-- score -->
+        <text x="390" y="38" font-size="10" fill="#fbbf24" font-weight="800" text-anchor="end">4,280</text>
+        <!-- weapon indicator -->
+        <rect x="8" y="228" width="45" height="16" rx="3" fill="rgba(0,0,0,0.6)"/>
+        <text x="14" y="239" font-size="7" fill="#60a5fa" font-weight="700">AK-47</text>
+        <text x="40" y="239" font-size="7" fill="#9ca3af" font-weight="600">28/90</text>
       </g>
       <g id="gameOverlay">
-        <circle cx="90" cy="120" r="26" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="3 3"/>
-        <text x="90" y="124" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">ENEMY</text>
-        <circle cx="330" cy="180" r="14" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="3 3"/>
-        <rect x="10" y="10" width="120" height="14" rx="4" fill="none" stroke="#fff" stroke-width="1.5"/>
-        <text x="15" y="20" font-size="9" fill="#fff" font-weight="700">HP 65%</text>
+        <circle cx="85" cy="160" r="16" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="3 3"/>
+        <circle cx="290" cy="165" r="14" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="3 3"/>
+        <circle cx="350" cy="155" r="10" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="2 2"/>
+        <rect x="8" y="8" width="130" height="16" rx="4" fill="none" stroke="#fff" stroke-width="1.5"/>
+        <rect x="8" y="28" width="100" height="8" rx="4" fill="none" stroke="#fff" stroke-width="1"/>
       </g>
     </defs>
   </svg>
@@ -641,55 +748,79 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
     </div>
   </section>
 
-  <!-- ============ LIVE DEMO ============ -->
+  <!-- ============ LIVE DEMO — Side-by-Side Comparison ============ -->
   <section class="section" id="ext-demo" style="border-top:1px solid var(--border)">
     <div class="container">
       <div class="section-head">
-        <h2>See it in action</h2>
-        <p>An interactive simulation of how VisionAdapt corrects game colors in real time. Move your mouse over the game scene, toggle correction on/off.</p>
+        <h2>See the difference instantly</h2>
+        <p>Drag the divider to compare. The left pane shows what a colorblind gamer sees without correction. The right shows VisionAdapt's real-time optimized output.</p>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 340px;gap:0;border:1px solid var(--border);border-radius:var(--radius-xl);overflow:hidden;background:var(--bg);box-shadow:var(--shadow-lg)">
-        <div style="position:relative;aspect-ratio:16/10;background:#050505;overflow:hidden">
-          <canvas id="liveGameCanvas" width="640" height="400" style="width:100%;height:100%;display:block"></canvas>
-        </div>
-        <div style="background:var(--surface);border-left:1px solid var(--border);padding:24px;display:flex;flex-direction:column;gap:18px">
-          <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em">Extension Panel</div>
-          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;display:flex;flex-direction:column;gap:12px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px var(--primary-glow)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" width="14" height="14" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-              </div>
-              <span style="font-weight:700;font-size:14px">VisionAdapt</span>
-              <span style="font-size:11px;color:var(--text-3);margin-left:auto;font-weight:500">v1.0.0</span>
-            </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline)">
-              <span style="font-size:13.5px;font-weight:600">Color correction</span>
-              <button class="toggle" id="liveDemoToggle" aria-label="Toggle color correction" aria-pressed="false"></button>
-            </div>
-            <div style="font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px" id="liveDemoLabel">
-              <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--text-3)"></span>
-              OFF — No correction
-            </div>
-            <div style="background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-sm);padding:12px">
-              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px"><span style="color:var(--text-3)">Type</span><span style="font-weight:600" id="demoProfileType">Deuteranopia</span></div>
-              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px"><span style="color:var(--text-3)">Severity</span><span style="font-weight:600" id="demoProfileSev">65%</span></div>
-              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px"><span style="color:var(--text-3)">Pipeline</span><span style="font-weight:600;color:var(--text-3)" id="demoPipeline">Idle</span></div>
-              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px"><span style="color:var(--text-3)">FPS</span><span style="font-weight:600" id="demoFps">60</span></div>
-              <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px"><span style="color:var(--text-3)">Game</span><span style="font-weight:600;color:var(--accent)" id="demoGame">Detecting...</span></div>
+
+      <!-- CVD type selector -->
+      <div class="demo-cvd-pills" id="liveDemoCvdPills" style="justify-content:center;margin-bottom:20px">
+        <button data-cvd="deuteranopia" class="demo-cvd-pill active">Deuteranopia (Red-Green)</button>
+        <button data-cvd="protanopia" class="demo-cvd-pill">Protanopia (Red-Green)</button>
+        <button data-cvd="tritanopia" class="demo-cvd-pill">Tritanopia (Blue-Yellow)</button>
+      </div>
+
+      <!-- Dual-canvas comparison container -->
+      <div class="demo-compare-wrap" id="liveDemoWrap">
+        <div class="demo-compare-canvas-wrap" id="liveDemoCanvasWrap">
+          <!-- CVD-simulated (uncorrected) — full width, clipped by slider -->
+          <canvas class="cvd-filtered" id="liveDemoCanvasLeft" width="800" height="500"></canvas>
+          <!-- Corrected (VisionAdapt) — full width, clipped by slider -->
+          <canvas class="cvd-corrected" id="liveDemoCanvasRight" width="800" height="500"></canvas>
+          <!-- On-pane badges -->
+          <div class="demo-compare-badge badge-before" id="liveBadgeBefore">
+            <span>Without Extension</span>
+          </div>
+          <div class="demo-compare-badge badge-after" id="liveBadgeAfter">
+            <span>VisionAdapt Active</span>
+          </div>
+          <!-- Interactive slider track -->
+          <div class="demo-compare-slider-track" id="liveSliderTrack" role="slider" aria-label="Compare uncorrected and corrected game view" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0">
+            <div class="demo-compare-divider" id="liveDivider" style="left:50%"></div>
+            <div class="demo-compare-handle" id="liveHandle" style="left:50%">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l-6 7 6 7M16 5l6 7-6 7"/></svg>
             </div>
           </div>
-          <p style="font-size:12px;color:var(--text-3);line-height:1.6">This simulates the extension's WebGL shader pipeline. In production, it intercepts your game's canvas and applies your personalized CVD correction profile in real time.</p>
+        </div>
+        <!-- Legend bar -->
+        <div class="demo-compare-legend">
+          <div class="demo-compare-legend-item">
+            <span class="demo-compare-legend-dot" style="background:#ef4444"></span>
+            <span style="color:var(--danger)">CVD Simulated — Uncorrected</span>
+          </div>
+          <div class="demo-compare-legend-item">
+            <span class="demo-compare-legend-dot" style="background:#22c55e"></span>
+            <span style="color:var(--success)">VisionAdapt — Optimized</span>
+          </div>
         </div>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-top:16px;font-size:13px;font-weight:600">
-        <span style="display:inline-flex;align-items:center;gap:8px;color:var(--danger)">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--danger)"></span>
-          Without correction (simulated CVD)
-        </span>
-        <span style="display:inline-flex;align-items:center;gap:8px;color:var(--accent)">
-          With VisionAdapt correction
-          <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent)"></span>
-        </span>
+
+      <!-- Extension panel below -->
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;margin-top:24px">
+        <div style="background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em">How it works</div>
+          <p style="font-size:13px;color:var(--text-2);line-height:1.6">VisionAdapt intercepts your game's canvas via a Chrome extension, applies a personalized color remapping shader based on your CVD profile, and renders the corrected output in real time — all running locally with zero server dependency.</p>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-lg);padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em">Extension Panel</div>
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px var(--primary-glow)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" width="13" height="13" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
+              <span style="font-weight:700;font-size:13px">VisionAdapt</span>
+              <span style="font-size:11px;color:var(--text-3);margin-left:auto;font-weight:500">v1.0.0</span>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--hairline);border-radius:var(--radius-sm);padding:10px">
+              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:12px"><span style="color:var(--text-3)">Pipeline</span><span style="font-weight:600;color:var(--success)" id="livePipelineLabel">WebGL active</span></div>
+              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:12px"><span style="color:var(--text-3)">FPS</span><span style="font-weight:600" id="liveFpsLabel">60</span></div>
+              <div style="display:flex;justify-content:space-between;padding:2px 0;font-size:12px"><span style="color:var(--text-3)">Correction</span><span style="font-weight:600;color:var(--success)">Active</span></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1152,116 +1283,201 @@ function makeCompareSlider(viewportEl, handleEl, rightEl){
     document.querySelectorAll('#cvdToggle button').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
     document.getElementById('sceneLeft').style.filter = `url(#f-${b.dataset.cvd})`;
+    /* update badge text to reflect current CVD type */
+    const badgeBefore = document.querySelector('.badge-before span');
+    if(badgeBefore) badgeBefore.textContent = `Without Extension · ${b.textContent}`;
   });
 })();
 
-/* ============================ LIVE DEMO CANVAS ============================ */
+/* ============================ LIVE DEMO — DUAL CANVAS ============================ */
 (function(){
-  const canvas = document.getElementById('liveGameCanvas');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W = 640, H = 400;
-  canvas.width = W; canvas.height = H;
+  var cL = document.getElementById('liveDemoCanvasLeft');
+  var cR = document.getElementById('liveDemoCanvasRight');
+  var track = document.getElementById('liveSliderTrack');
+  var divider = document.getElementById('liveDivider');
+  var handleEl = document.getElementById('liveHandle');
+  if(!cL || !cR || !track) return;
+  var xL = cL.getContext('2d'), xR = cR.getContext('2d');
+  var W = 800, H = 500;
+  cL.width = W; cL.height = H; cR.width = W; cR.height = H;
 
-  let correctionOn = false, frame = 0;
-  const toggle = document.getElementById('liveDemoToggle');
-  if(toggle){
-    toggle.addEventListener('click', function(){
-      correctionOn = !correctionOn;
-      this.classList.toggle('on', correctionOn);
-      this.setAttribute('aria-pressed', String(correctionOn));
-      document.getElementById('liveDemoLabel').innerHTML = correctionOn ? '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success)"></span>ON — Correcting colors' : '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--text-3)"></span>OFF — No correction';
-      document.getElementById('demoPipeline').textContent = correctionOn ? 'WebGL active' : 'Idle';
-      document.getElementById('demoPipeline').style.color = correctionOn ? 'var(--success)' : 'var(--text-3)';
-    });
+  var CVD = {
+    deuteranopia: [0.367,0.861,-0.228,0, 0.280,0.673,0.047,0, -0.012,0.043,0.969,0, 0,0,0,1],
+    protanopia:   [0.152,1.053,-0.205,0, 0.115,0.786,0.099,0, -0.004,-0.048,1.052,0, 0,0,0,1],
+    tritanopia:   [1.256,-0.077,-0.179,0, -0.078,0.931,0.148,0, 0.005,0.691,0.304,0, 0,0,0,1]
+  };
+  var currentCvd = 'deuteranopia';
+  var sliderPct = 50, frame = 0;
+  var wrap = document.getElementById('liveDemoCanvasWrap');
+  var playerX = 400, playerY = 380;
+  wrap.addEventListener('mousemove', function(e){
+    var r = wrap.getBoundingClientRect();
+    playerX = ((e.clientX-r.left)/r.width)*W;
+    playerY = ((e.clientY-r.top)/r.height)*H;
+  });
+
+  function applyMatrix(imgData, mat){
+    var d = imgData.data;
+    for(var i=0;i<d.length;i+=4){
+      var r=d[i], g=d[i+1], b=d[i+2];
+      d[i]   = Math.min(255, Math.max(0, mat[0]*r + mat[1]*g + mat[2]*b + mat[3]*255));
+      d[i+1] = Math.min(255, Math.max(0, mat[4]*r + mat[5]*g + mat[6]*b + mat[7]*255));
+      d[i+2] = Math.min(255, Math.max(0, mat[8]*r + mat[9]*g + mat[10]*b + mat[11]*255));
+    }
+    return imgData;
   }
 
-  var enemies = [];
-  for(var i=0;i<8;i++) enemies.push({ x:80+Math.random()*480, y:100+Math.random()*200, r:12+Math.random()*14, vx:(Math.random()-0.5)*1.2, vy:(Math.random()-0.5)*0.6, color:['#e74c3c','#2ecc71','#e67e22','#3498db'][i%4], label:['ENEMY','PICKUP','HAZARD','ITEM'][i%4] });
-  var pickups = [];
-  for(var i=0;i<5;i++) pickups.push({ x:60+Math.random()*520, y:80+Math.random()*240, s:8+Math.random()*6, color:['#f1c40f','#9b59b6','#1abc9c'][i%3], phase:Math.random()*Math.PI*2 });
+  var enemies = [
+    {x:120,y:250,r:20,vx:1.2,vy:0.5,color:'#ef4444',label:'ENEMY'},
+    {x:300,y:200,r:16,vx:-0.8,vy:0.7,color:'#f97316',label:'BOT'},
+    {x:500,y:280,r:22,vx:0.6,vy:-0.4,color:'#ec4899',label:'BOSS'},
+    {x:650,y:220,r:14,vx:-1.1,vy:0.3,color:'#eab308',label:'MOB'},
+    {x:200,y:320,r:18,vx:0.9,vy:-0.6,color:'#ef4444',label:'RAID'},
+    {x:420,y:180,r:15,vx:-0.7,vy:0.8,color:'#f97316',label:'ELITE'}
+  ];
+  var pickups = [
+    {x:180,y:270,s:12,color:'#22c55e',phase:0},
+    {x:360,y:240,s:10,color:'#06b6d4',phase:1.2},
+    {x:540,y:300,s:11,color:'#a855f7',phase:2.5},
+    {x:700,y:250,s:9,color:'#f59e0b',phase:0.8}
+  ];
 
-  var playerX = 320, playerY = 300;
-  canvas.addEventListener('mousemove', function(e){ var r = canvas.getBoundingClientRect(); playerX = ((e.clientX-r.left)/r.width)*W; playerY = ((e.clientY-r.top)/r.height)*H; });
-
-  var fpsCount = 0, lastFpsTime = performance.now(), displayFps = 60;
-  function draw(){
+  function drawScene(ctx, t){
     ctx.clearRect(0,0,W,H);
-    var skyGrad = ctx.createLinearGradient(0,0,0,H*0.65);
-    skyGrad.addColorStop(0,'#0f172a'); skyGrad.addColorStop(1,'#1e293b');
-    ctx.fillStyle = skyGrad; ctx.fillRect(0,0,W,H*0.65);
-    ctx.fillStyle = '#1a2332'; ctx.fillRect(0,H*0.65,W,H*0.35);
-
-    ctx.strokeStyle = '#253345'; ctx.lineWidth = 1;
-    for(var i=0;i<8;i++){ var y=H*0.65+i*20; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    for(var i=0;i<20;i++){ var sx=(i*97+13)%W, sy=(i*53+7)%(H*0.5); ctx.beginPath(); ctx.arc(sx,sy,0.8+Math.sin(frame*0.02+i)*0.4,0,Math.PI*2); ctx.fill(); }
-
-    var blds = [[40,60,30],[80,45,25],[150,70,35],[220,40,20],[310,55,30],[400,65,35],[480,50,28],[550,60,32]];
+    var sky = ctx.createLinearGradient(0,0,0,H*0.58);
+    sky.addColorStop(0,'#0c1445'); sky.addColorStop(1,'#1a2744');
+    ctx.fillStyle = sky; ctx.fillRect(0,0,W,H*0.58);
+    ctx.fillStyle = '#1c2b1c'; ctx.fillRect(0,H*0.58,W,H*0.42);
+    ctx.fillStyle = '#2d4a2d'; ctx.fillRect(0,H*0.58,W,4);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    for(var i=0;i<25;i++){
+      var sx=(i*73+17)%W, sy=(i*41+11)%(H*0.35);
+      ctx.beginPath(); ctx.arc(sx,sy,0.7+Math.sin(t*0.015+i)*0.3,0,Math.PI*2); ctx.fill();
+    }
+    var blds = [[40,140,44,'#1a1a2e','#252540','#f5c542'],[100,110,48,'#16213e','#1f2f50','#e8e850'],
+      [170,130,38,'#0f3460','#1a4a7a','#50c878'],[230,100,34,'#2c1654','#3d2066','#c084fc'],
+      [285,120,46,'#1a1a2e','#252540','#f97316'],[350,110,42,'#16213e','#1f2f50','#06b6d4'],
+      [415,95,38,'#1a1a2e','#252540','#ec4899'],[470,125,44,'#0f3460','#1a4a7a','#22c55e'],
+      [535,105,40,'#2c1654','#3d2066','#a855f7'],[600,115,46,'#16213e','#1f2f50','#fbbf24'],
+      [670,100,38,'#1a1a2e','#252540','#f43f5e'],[740,120,42,'#0f3460','#1a4a7a','#34d399']];
     blds.forEach(function(b){
-      ctx.fillStyle = '#151f2e'; ctx.fillRect(b[0],H*0.65-b[1],b[2],b[1]);
-      ctx.fillStyle = '#1e293b'; ctx.fillRect(b[0]+2,H*0.65-b[1]+4,b[2]-4,b[1]-8);
-      for(var wy=0;wy<Math.floor(b[1]/12);wy++) for(var wx=0;wx<2;wx++){
-        ctx.fillStyle = Math.random()>0.4?'#f5c542':'#2a3a4f';
-        ctx.fillRect(b[0]+4+wx*10,H*0.65-b[1]+6+wy*12,5,7);
+      ctx.fillStyle = b[4]; ctx.fillRect(b[0],H*0.58-b[1],b[3],b[1]);
+      ctx.fillStyle = b[5]; ctx.fillRect(b[0]+2,H*0.58-b[1]+4,b[3]-4,b[1]-8);
+      for(var wy=0;wy<Math.floor(b[1]/14);wy++) for(var wx=0;wx<2;wx++){
+        ctx.fillStyle = Math.random()>0.35?b[6]:'#2a3a5a';
+        ctx.fillRect(b[0]+4+wx*12,H*0.58-b[1]+6+wy*14,6,8);
       }
     });
-
     pickups.forEach(function(p){
-      var by = Math.sin(frame*0.04+p.phase)*4;
-      ctx.save(); ctx.translate(p.x,p.y+by); ctx.rotate(Math.PI/4+frame*0.02);
+      var by = Math.sin(t*0.04+p.phase)*5;
+      ctx.save(); ctx.translate(p.x,p.y+by); ctx.rotate(Math.PI/4+t*0.02);
       ctx.fillStyle = p.color; ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s);
       ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(-p.s/2,-p.s/2,p.s,p.s);
       ctx.restore();
     });
-
     enemies.forEach(function(e){
       e.x += e.vx; e.y += e.vy;
       if(e.x<e.r+10||e.x>W-e.r-10) e.vx *= -1;
-      if(e.y<e.r+80||e.y>H*0.6-e.r) e.vy *= -1;
+      if(e.y<e.r+H*0.3||e.y>H*0.55-e.r) e.vy *= -1;
       ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
       ctx.fillStyle = e.color; ctx.fill();
       ctx.setLineDash([3,3]); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle='#fff'; ctx.font='600 '+Math.max(9,e.r*0.55)+'px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='#fff'; ctx.font='600 '+Math.max(10,e.r*0.5)+'px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(e.label,e.x,e.y);
     });
-
+    ctx.save(); ctx.translate(100,H*0.58-20); ctx.rotate(Math.PI/4+t*0.015);
+    ctx.fillStyle = '#f59e0b'; ctx.fillRect(-8,-8,16,16);
+    ctx.strokeStyle = '#fcd34d'; ctx.lineWidth = 1.5; ctx.strokeRect(-8,-8,16,16);
+    ctx.restore();
+    ctx.fillStyle = '#dc2626'; ctx.fillRect(450,H*0.58-16,22,14); ctx.strokeStyle='#fca5a5'; ctx.lineWidth=1; ctx.strokeRect(450,H*0.58-16,22,14);
+    ctx.fillStyle = '#fff'; ctx.font='600 6px system-ui'; ctx.textAlign='center'; ctx.fillText('AMMO',461,H*0.58-6);
+    ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth=2.5; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.ellipse(600,H*0.58-30,16,24,0,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(124,58,237,0.3)'; ctx.beginPath(); ctx.ellipse(600,H*0.58-30,8,12,0,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle='rgba(255,255,255,0.8)'; ctx.lineWidth=1.5;
     ctx.beginPath(); ctx.moveTo(playerX-10,playerY); ctx.lineTo(playerX+10,playerY); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(playerX,playerY-10); ctx.lineTo(playerX,playerY+10); ctx.stroke();
     ctx.beginPath(); ctx.arc(playerX,playerY,8,0,Math.PI*2); ctx.stroke();
-
-    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(16,16,180,16);
-    ctx.fillStyle='#e74c3c'; ctx.fillRect(16,16,120,16);
-    ctx.fillStyle='#fff'; ctx.font='600 10px system-ui'; ctx.textAlign='left'; ctx.textBaseline='middle';
-    ctx.fillText('HP 65%',22,25);
-    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(16,38,140,10);
-    ctx.fillStyle='#2ecc71'; ctx.fillRect(16,38,90,10);
-    ctx.fillStyle='#f1c40f'; ctx.font='700 13px system-ui'; ctx.textAlign='right';
-    ctx.fillText('SCORE: 4,280',W-16,24);
-
-    ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(W-110,H-90,100,80);
-    ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.strokeRect(W-110,H-90,100,80);
-    enemies.forEach(function(e){ ctx.fillStyle=e.color; ctx.beginPath(); ctx.arc(W-110+(e.x/W)*100,H-90+(e.y/H)*80,2,0,Math.PI*2); ctx.fill(); });
-    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(W-110+(playerX/W)*100,H-90+(playerY/H)*80,3,0,Math.PI*2); ctx.fill();
-
-    ctx.fillStyle='#555'; ctx.font='600 11px system-ui'; ctx.textAlign='center';
-    ctx.fillText('Krunker.io \u2014 Team Deathmatch',W/2,H-12);
-
-    frame++; fpsCount++;
-    var now = performance.now();
-    if(now-lastFpsTime>=1000){
-      displayFps = Math.round(fpsCount*1000/(now-lastFpsTime));
-      fpsCount=0; lastFpsTime=now;
-      var fpsEl = document.getElementById('demoFps'); if(fpsEl) fpsEl.textContent=displayFps;
-      var gEl = document.getElementById('demoGame'); if(gEl) gEl.textContent='Krunker.io';
-    }
-    requestAnimationFrame(draw);
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(12,12,140,18); ctx.fillStyle='#ef4444'; ctx.fillRect(12,12,91,18);
+    ctx.fillStyle='#fff'; ctx.font='700 10px system-ui'; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText('HP 65%',18,22);
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(12,34,110,9); ctx.fillStyle='#22c55e'; ctx.fillRect(12,34,70,9);
+    ctx.fillStyle='#fbbf24'; ctx.font='800 14px system-ui'; ctx.textAlign='right'; ctx.fillText('4,280',W-16,26);
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(W-120,H-52,110,42); ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.strokeRect(W-120,H-52,110,42);
+    enemies.forEach(function(e){ ctx.fillStyle=e.color; ctx.beginPath(); ctx.arc(W-120+(e.x/W)*110,H-52+(e.y/H)*42,2.5,0,Math.PI*2); ctx.fill(); });
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(W-120+(playerX/W)*110,H-52+(playerY/H)*42,3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#9ca3af'; ctx.font='600 11px system-ui'; ctx.textAlign='center'; ctx.fillText('Krunker.io',W/2,H-8);
   }
-  requestAnimationFrame(draw);
-})();
 
+  function renderFrame(){
+    xL.clearRect(0,0,W,H);
+    drawScene(xL, frame);
+    var imgData = xL.getImageData(0,0,W,H);
+    applyMatrix(imgData, CVD[currentCvd]);
+    xR.putImageData(imgData, 0, 0);
+    frame++;
+    requestAnimationFrame(renderFrame);
+  }
+  requestAnimationFrame(renderFrame);
+
+  /* Slider interaction */
+  var dragging = false;
+  function setSlider(pct){
+    pct = Math.max(2, Math.min(98, pct));
+    sliderPct = pct;
+    divider.style.left = pct + '%';
+    handleEl.style.left = pct + '%';
+    cR.style.clipPath = 'inset(0 0 0 ' + pct + '%)';
+    track.setAttribute('aria-valuenow', Math.round(pct));
+  }
+  setSlider(50);
+  track.addEventListener('pointerdown', function(e){
+    dragging = true; track.setPointerCapture(e.pointerId);
+    var r = wrap.getBoundingClientRect();
+    setSlider(((e.clientX-r.left)/r.width)*100);
+  });
+  track.addEventListener('pointermove', function(e){
+    if(!dragging) return;
+    var r = wrap.getBoundingClientRect();
+    setSlider(((e.clientX-r.left)/r.width)*100);
+  });
+  track.addEventListener('pointerup', function(){ dragging = false; });
+  track.addEventListener('pointercancel', function(){ dragging = false; });
+  track.addEventListener('keydown', function(e){
+    var step = e.shiftKey ? 10 : 3;
+    if(e.key==='ArrowLeft'||e.key==='ArrowDown'){ setSlider(sliderPct-step); e.preventDefault(); }
+    else if(e.key==='ArrowRight'||e.key==='ArrowUp'){ setSlider(sliderPct+step); e.preventDefault(); }
+    else if(e.key==='Home'){ setSlider(2); e.preventDefault(); }
+    else if(e.key==='End'){ setSlider(98); e.preventDefault(); }
+  });
+  wrap.addEventListener('click', function(e){
+    var r = wrap.getBoundingClientRect();
+    setSlider(((e.clientX-r.left)/r.width)*100);
+  });
+
+  /* CVD type pills */
+  var pills = document.getElementById('liveDemoCvdPills');
+  if(pills){
+    pills.addEventListener('click', function(e){
+      var b = e.target.closest('button'); if(!b) return;
+      pills.querySelectorAll('button').forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      currentCvd = b.dataset.cvd;
+    });
+  }
+
+  /* FPS counter */
+  var fpsCount=0, lastFpsTime=performance.now(), displayFps=60;
+  setInterval(function(){
+    displayFps = Math.round(fpsCount*1000/(performance.now()-lastFpsTime));
+    fpsCount=0; lastFpsTime=performance.now();
+    var el = document.getElementById('liveFpsLabel'); if(el) el.textContent=displayFps;
+  }, 1000);
+  var origRAF = window.requestAnimationFrame;
+  window.requestAnimationFrame = function(cb){
+    fpsCount++;
+    return origRAF.call(window, cb);
+  };
+})();
 /* ============================ ASSESSMENT ============================ */
 // A pool of plates covering both major confusion axes (red-green and
 // blue-yellow) plus one neutral control plate. Each assessment draws a
