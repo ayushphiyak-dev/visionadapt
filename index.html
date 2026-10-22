@@ -461,6 +461,105 @@ a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.sid
   .hero{padding:60px 0 48px}
   .section{padding:clamp(48px,8vw,80px) 0}
 }
+
+/* ---------- Vercel-inspired makeover ---------- */
+:root{
+  --bg:#000;
+  --surface:#0a0a0a;
+  --surface-2:#111;
+  --surface-3:#1a1a1a;
+  --primary:#fff;
+  --primary-ink:#e5e7eb;
+  --primary-glow:rgba(255,255,255,.14);
+  --secondary:#9ca3af;
+  --accent:#60a5fa;
+  --accent-glow:rgba(96,165,250,.18);
+  --success:#22c55e;
+  --warning:#f59e0b;
+  --info:#60a5fa;
+  --danger:#ef4444;
+  --border:#262626;
+  --hairline:#1f1f1f;
+  --text:#fafafa;
+  --text-2:#a1a1aa;
+  --text-3:#737373;
+  --radius-sm:10px;
+  --radius-md:14px;
+  --radius-lg:18px;
+  --radius-xl:24px;
+  --shadow-sm:0 6px 20px rgba(0,0,0,.22);
+  --shadow-md:0 10px 28px rgba(0,0,0,.3);
+  --shadow-lg:0 24px 56px rgba(0,0,0,.45);
+  --shadow-glow:0 0 0 1px var(--border),0 24px 56px rgba(0,0,0,.38);
+  --shadow-card:0 0 0 1px var(--hairline),0 10px 24px rgba(0,0,0,.25);
+  --shadow-card-hover:0 0 0 1px #3f3f46,0 18px 42px rgba(0,0,0,.4);
+}
+[data-theme="light"]{
+  --bg:#fafafa;
+  --surface:#fff;
+  --surface-2:#f5f5f5;
+  --surface-3:#ececec;
+  --primary:#09090b;
+  --primary-ink:#111827;
+  --primary-glow:rgba(9,9,11,.12);
+  --secondary:#6b7280;
+  --accent:#2563eb;
+  --accent-glow:rgba(37,99,235,.14);
+  --success:#16a34a;
+  --warning:#d97706;
+  --info:#2563eb;
+  --danger:#dc2626;
+  --border:#e4e4e7;
+  --hairline:#e5e7eb;
+  --text:#09090b;
+  --text-2:#52525b;
+  --text-3:#71717a;
+  --shadow-sm:0 8px 22px rgba(0,0,0,.06);
+  --shadow-md:0 14px 30px rgba(0,0,0,.08);
+  --shadow-lg:0 26px 58px rgba(0,0,0,.12);
+  --shadow-glow:0 0 0 1px var(--border),0 16px 36px rgba(0,0,0,.08);
+  --shadow-card:0 0 0 1px var(--hairline),0 6px 16px rgba(0,0,0,.05);
+  --shadow-card-hover:0 0 0 1px #d4d4d8,0 16px 36px rgba(0,0,0,.09);
+}
+body{background:radial-gradient(circle at 20% -10%, color-mix(in srgb, var(--surface-3) 65%, transparent), transparent 55%), var(--bg)}
+.navbar{border-bottom:1px solid var(--border);background:color-mix(in srgb, var(--bg) 84%, transparent)}
+.navbar.scrolled{background:color-mix(in srgb, var(--bg) 92%, transparent)}
+.brand .mark{background:var(--primary);box-shadow:0 10px 24px var(--primary-glow)}
+.brand .mark svg{stroke:var(--bg)}
+.nav-link.active{color:var(--text);background:color-mix(in srgb, var(--text) 8%, transparent)}
+.icon-btn{border-color:var(--border)}
+.icon-btn:hover{border-color:color-mix(in srgb, var(--text) 24%, var(--border));background:var(--surface-2)}
+
+.btn{border-radius:999px}
+.btn-primary{background:var(--primary);color:var(--bg);box-shadow:0 12px 32px var(--primary-glow)}
+.btn-primary:hover{background:var(--primary-ink)}
+.btn-secondary{background:var(--surface-2);border-color:var(--border)}
+.btn-secondary:hover{background:var(--surface-3);border-color:color-mix(in srgb, var(--text) 26%, var(--border))}
+.btn-ghost:hover{background:var(--surface-2)}
+
+.eyebrow{background:var(--surface-2);color:var(--text);border-color:var(--border)}
+.hero h1 .grad{background:linear-gradient(110deg,var(--text) 15%,var(--text-2) 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.demo-card,
+.feat-card,
+.tech-pill,
+.card,
+.kpi,
+.stat-band,
+.ext-status-card,
+.modal,
+.q-card{border-color:var(--border);box-shadow:var(--shadow-card)}
+.demo-card:hover,.feat-card:hover,.tech-pill:hover,.card:hover,.kpi:hover,.rec-card:hover{border-color:color-mix(in srgb,var(--text) 20%,var(--border));box-shadow:var(--shadow-card-hover)}
+.demo-toggle button.active{background:var(--surface-3)}
+.demo-cvd-pill.active,.chip.selected,.opt.selected{color:var(--text);border-color:color-mix(in srgb,var(--text) 30%,var(--border));background:color-mix(in srgb,var(--text) 8%,transparent);box-shadow:none}
+.toggle.on{background:var(--text)}
+.toggle.on::after{background:var(--bg)}
+.kpi::after{background:linear-gradient(90deg,#fff,#9ca3af)}
+.progress-fill{background:linear-gradient(90deg,#f5f5f5,#a3a3a3)}
+.swatch.selected{border-color:var(--primary)}
+.chart-tooltip,.toast{border-color:var(--border);box-shadow:var(--shadow-md)}
+.footer-col a:hover{color:var(--primary)}
+
+a:focus-visible,button:focus-visible,input:focus-visible,.opt:focus-visible,.side-link:focus-visible,.slider-handle:focus-visible{outline-color:var(--accent)}
 </style>
 </head>
 <body data-theme="dark">
